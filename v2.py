@@ -246,6 +246,9 @@ def load_sheet_hero(holder):
             'FBa': 0,
         })
         holder.append(hero)
+        # Check if equipped
+        if rw[19].value is not None:
+            pass
         idx += 1
 def wear(_piece, _sum):
     # Add set
@@ -261,6 +264,8 @@ def calc_benchmark_group(data, hero, idx, total, queue):
         # Fileter by index
         if idx_wp % total != idx:
             idx_wp += 1
+            continue
+        if wp['used']:
             continue
         idx_hd = 0
         for hd in data['head']:
@@ -324,8 +329,9 @@ def calc_benchmark_group(data, hero, idx, total, queue):
     queue.put({'set_best': set_best, 'benchmark_best': benchmark_best})
 if __name__ == '__main__':
     # Open excel data
-    WB = load_workbook(r'D:/SJ/e7/data.xlsx')
-    # WB = load_workbook(r'S:/e7/test.xlsx')
+    # pth_data = r'S:/e7/test.xlsx'
+    pth_data = r'D:/SJ/e7/data.xlsx'
+    WB = load_workbook(pth_data)
     # Load items data
     items = {}
     # Load weapon data
@@ -338,6 +344,7 @@ if __name__ == '__main__':
     # Load hero data
     heroes = []
     load_sheet_hero(heroes)
+    idx_hero = 0
     for hr in heroes:
         # Get formula
         task_number = 10
@@ -370,6 +377,15 @@ if __name__ == '__main__':
                 else:
                     # Compare next parameter
                     pass
+        # Update excel sheet
+        ws = WB['hero']
+        ws['T{idx}'.format(idx=idx_hero + 2)] = set_best[0]
+        ws['U{idx}'.format(idx=idx_hero + 2)] = set_best[1]
+        ws['V{idx}'.format(idx=idx_hero + 2)] = set_best[2]
+        ws['W{idx}'.format(idx=idx_hero + 2)] = set_best[3]
+        ws['X{idx}'.format(idx=idx_hero + 2)] = set_best[4]
+        ws['Y{idx}'.format(idx=idx_hero + 2)] = set_best[5]
+        WB.save(pth_data)
         # Set items as 'used'
         items['weapon'][set_best[0]]['used'] = True
         items['head'][set_best[1]]['used'] = True
@@ -393,3 +409,4 @@ if __name__ == '__main__':
         print(items['neck'][set_best[3]])
         print(items['ring'][set_best[4]])
         print(items['shoe'][set_best[5]])
+        idx_hero += 1

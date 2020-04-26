@@ -58,6 +58,11 @@ class Hero:
         self.TOa = dict_data['TOa']
         self.FB = dict_data['FB']
         self.FBa = dict_data['FBa']
+    '''
+    To Get formula in list
+    '''
+    def get_formula(self):
+        return self.formula
     # To remove all clothes
     def strip(self):
         self.items = []
@@ -213,7 +218,7 @@ class Hero:
         elif criteria == 'HP':
             return status['HP']
         elif criteria == 'DMG':
-            vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['AT'] * status['CT'] * status['CD'] / 100
+            vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['CT'] * status['CD'] / 100
             if status['FU']:
                 return vl * 1.3
             return vl
@@ -227,6 +232,17 @@ class Hero:
             if status['FB']:
                 return 1
             return 0
+        elif criteria == 'TANK':
+            return status['HP'] * (1 + status['DF'] / 300)
+        elif criteria == 'BL':
+            if status['BL']:
+                return 1
+            return 0
+        elif criteria == 'CMG':
+            vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
+            if status['FU']:
+                return vl * 1.3
+            return vl
         else:
             print('unexpected criteria {nm}'.format(nm=criteria))
 def load_sheet_item(_type, _holder):
@@ -251,6 +267,9 @@ def load_sheet_hero(holder, items):
         if idx == 0:
             idx += 1
             continue
+        # Check valid line
+        if rw[1].value is None:
+            continue
         hero = Hero()
         hero.load({
             'formula': rw[1].value,
@@ -258,39 +277,40 @@ def load_sheet_hero(holder, items):
             'ATp': rw[4].value,
             'ATa': rw[3].value,
             'DF': rw[5].value,
-            'DFp': 0,
-            'DFa': 0,
-            'HP': rw[6].value,
-            'HPp': rw[7].value,
-            'HPa': rw[8].value,
-            'SP': rw[9].value,
-            'SPa': rw[10].value,
-            'CT': rw[11].value,
-            'CTa': rw[12].value,
-            'CD': rw[13].value,
-            'CDa': rw[14].value,
-            'HT': rw[15].value,
-            'HTa': rw[16].value,
-            'EV': rw[17].value,
-            'EVa': 0,
-            'TO': rw[18].value,
-            'TOa': rw[19].value,
+            'DFp': rw[6].value,
+            'DFa': rw[7].value,
+            'HP': rw[8].value,
+            'HPp': rw[9].value,
+            'HPa': rw[10].value,
+            'SP': rw[11].value,
+            'SPa': rw[12].value,
+            'CT': rw[13].value,
+            'CTa': rw[14].value,
+            'CD': rw[15].value,
+            'CDa': rw[16].value,
+            'HT': rw[17].value,
+            'HTa': rw[18].value,
+            'EV': rw[19].value,
+            'EVa': rw[20].value,
+            'TO': rw[21].value,
+            'TOa': rw[22].value,
             'FB': 0,
             'FBa': 0,
         })
-        if rw[20].value is not None:
-            hero.equip(items['weapon'][int(rw[20].value)])
-            hero.equip(items['head'][int(rw[21].value)])
-            hero.equip(items['armor'][int(rw[22].value)])
-            hero.equip(items['neck'][int(rw[23].value)])
-            hero.equip(items['ring'][int(rw[24].value)])
-            hero.equip(items['shoe'][int(rw[25].value)])
-            items['weapon'][int(rw[20].value)]['used'] = True
-            items['head'][int(rw[21].value)]['used'] = True
-            items['armor'][int(rw[22].value)]['used'] = True
-            items['neck'][int(rw[23].value)]['used'] = True
-            items['ring'][int(rw[24].value)]['used'] = True
-            items['shoe'][int(rw[25].value)]['used'] = True
+        # Check previous item data
+        if rw[23].value is not None:
+            hero.equip(items['weapon'][int(rw[23].value)])
+            hero.equip(items['head'][int(rw[24].value)])
+            hero.equip(items['armor'][int(rw[25].value)])
+            hero.equip(items['neck'][int(rw[26].value)])
+            hero.equip(items['ring'][int(rw[27].value)])
+            hero.equip(items['shoe'][int(rw[28].value)])
+            items['weapon'][int(rw[23].value)]['used'] = True
+            items['head'][int(rw[24].value)]['used'] = True
+            items['armor'][int(rw[25].value)]['used'] = True
+            items['neck'][int(rw[26].value)]['used'] = True
+            items['ring'][int(rw[27].value)]['used'] = True
+            items['shoe'][int(rw[28].value)]['used'] = True
         holder.append(hero)
         idx += 1
 def wear(_piece, _sum):
@@ -314,32 +334,32 @@ def calc_benchmark_group(data, hero, idx, total, queue):
         if idx_wp % total != idx:
             idx_wp += 1
             continue
-        if wp['used']:
+        if wp['used'] or wp['filtered']:
             idx_wp += 1
             continue
         idx_hd = 0
         for hd in data['head']:
-            if hd['used']:
+            if hd['used'] or hd['filtered']:
                 idx_hd += 1
                 continue
             idx_am = 0
             for am in data['armor']:
-                if am['used']:
+                if am['used'] or am['filtered']:
                     idx_am += 1
                     continue
                 idx_nk = 0
                 for nk in data['neck']:
-                    if nk['used']:
+                    if nk['used'] or nk['filtered']:
                         idx_nk += 1
                         continue
                     idx_rg = 0
                     for rg in data['ring']:
-                        if rg['used']:
+                        if rg['used'] or rg['filtered']:
                             idx_rg += 1
                             continue
                         idx_sh = 0
                         for sh in data['shoe']:
-                            if sh['used']:
+                            if sh['used'] or sh['filtered']:
                                 idx_sh += 1
                                 continue
                             hero.strip()
@@ -350,6 +370,9 @@ def calc_benchmark_group(data, hero, idx, total, queue):
                             hero.equip(rg)
                             hero.equip(sh)
                             benchmark = hero.get_benchmark()
+                            # Check benchmark valid
+                            if benchmark == None:
+                                continue
                             # print('[{a},{b},{c},{d},{e},{f},{g}]'.format(a=idx_wp,b=idx_hd,c=idx_am,d=idx_nk,e=idx_rg,f=idx_sh,g=benchmark))
                             # Loop into all parameters
                             for i in range(len(benchmark)):
@@ -383,6 +406,235 @@ def calc_benchmark_group(data, hero, idx, total, queue):
         i=idx, j=idx_wp * idx_hd * idx_am * idx_nk * idx_rg * idx_sh
     ))
     queue.put({'set_best': set_best, 'benchmark_best': benchmark_best})
+# '''
+# To filter items that has been used.
+# '''
+# def filter_items_by_used(items):
+#     result = {}
+#     for itype, dt in items.items():
+#         result_items = []
+#         for item in dt:
+#             if not item['used']:
+                # result_items.append()
+def calc_item_score_on_formula(item, formula):
+    result = {}
+    for criteria in formula:
+        if criteria == 'CT':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+        elif criteria == 'DPS':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'AT':
+                result['AT set'] = 1
+            else:
+                result['AT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            if item['set'] == 'FU':
+                result['FU set'] = 1
+            else:
+                result['FU set'] = 0
+            if item['set'] == 'SP':
+                result['SP set'] = 1
+            else:
+                result['SP set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'ATa':
+                    result['ATa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+                elif attribute['type'] == 'ATp':
+                    result['ATp'] = attribute['value']
+                elif attribute['type'] == 'SPa':
+                    result['SPa'] = attribute['value']
+        elif criteria == 'SP':
+            if item['set'] == 'SP':
+                result['SP set'] = 1
+            else:
+                result['SP set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'SPa':
+                    result['SPa'] = attribute['value']
+        elif criteria == 'HP':
+            if item['set'] == 'HP':
+                result['HP set'] = 1
+            else:
+                result['HP set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'HPa':
+                    result['HPa'] = attribute['value']
+                if attribute['type'] == 'HPp':
+                    result['HPp'] = attribute['value']
+        elif criteria == 'DMG':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'AT':
+                result['AT set'] = 1
+            else:
+                result['AT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            if item['set'] == 'FU':
+                result['FU set'] = 1
+            else:
+                result['FU set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'ATa':
+                    result['ATa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+                elif attribute['type'] == 'ATp':
+                    result['ATp'] = attribute['value']
+        elif criteria == 'HT':
+            if item['set'] == 'HT':
+                result['HT set'] = 1
+            else:
+                result['HT set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'HTa':
+                    result['HTa'] = attribute['value']
+        elif criteria == 'FB':
+            if item['set'] == 'FB':
+                result['FB set'] = 1
+            else:
+                result['FB set'] = 0
+        elif criteria == 'TANK':
+            if item['set'] == 'HP':
+                result['HP set'] = 1
+            else:
+                result['HP set'] = 0
+            if item['set'] == 'DF':
+                result['DF set'] = 1
+            else:
+                result['DF set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'HPa':
+                    result['HPa'] = attribute['value']
+                if attribute['type'] == 'HPp':
+                    result['HPp'] = attribute['value']
+                if attribute['type'] == 'DFa':
+                    result['DFa'] = attribute['value']
+                if attribute['type'] == 'DFp':
+                    result['DFp'] = attribute['value']
+        elif criteria == 'BL':
+            if item['set'] == 'BL':
+                result['BL set'] = 1
+            else:
+                result['BL set'] = 0
+        elif criteria == 'CMG':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            if item['set'] == 'FU':
+                result['FU set'] = 1
+            else:
+                result['FU set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+        else:
+            print('unknown criteria {m}'.format(m=criteria))
+    return result
+'''
+To filter items that contributes nothing to the formula.
+'''
+def filter_items_by_formula(items, formula):
+    for itype, dt in items.items():
+        marks = {}
+        # Counter for how many items filtered
+        ctr = 0
+        idx = 0
+        for item in dt:
+            # This item is already used
+            if item['used']:
+                # Just ignore
+                ctr += 1
+                idx += 1
+                continue
+            # By default item is not filtered
+            items[itype][idx]['filtered'] = False
+            # Calculate this item
+            mark = calc_item_score_on_formula(item, formula)
+            # Compare with previous items
+            flg_beaten = False
+            idxs_beaten = set()
+            # Loop all previous items
+            for idx_mark_prev, mark_prev in marks.items():
+                flg_any_better = False
+                # This one is better than previous one ?
+                for ky, vl in mark.items():
+                    if ky in mark_prev:
+                        base = mark_prev[ky]
+                    else:
+                        base = 0
+                    if vl > base:
+                        flg_any_better = True
+                        break
+                # Beat this one?
+                if not flg_any_better:
+                    # Beat it
+                    flg_beaten = True
+                    # Stop comparing
+                    break
+                flg_any_worse = False
+                # Previous one is better than this one?
+                for ky, vl in mark_prev.items():
+                    if ky in mark:
+                        base = mark[ky]
+                    else:
+                        base = 0
+                    if vl > base:
+                        flg_any_worse = True
+                        break
+                # Beat previous one?
+                if not flg_any_worse:
+                    # Beat the previous one
+                    idxs_beaten.add(idx_mark_prev)
+            # Remove beaten ones
+            for i in idxs_beaten:
+                if i == 72:
+                    print('catch')
+                marks.pop(i)
+                # Mark it in original data
+                items[itype][i]['filtered'] = True
+                ctr += 1
+            # This one is not beaten
+            if not flg_beaten:
+                # Add into marks
+                marks[idx] = mark
+            # This one is beaten
+            else:
+                # Mark filtered
+                items[itype][idx]['filtered'] = True
+                ctr += 1
+            idx += 1
+        # Display how many filtered
+        print('filtered {n}% {t}'.format(n=ctr/len(dt)*100, t=itype))
 if __name__ == '__main__':
     # Open excel data
     # pth_data = r'S:/e7/test.xlsx'
@@ -406,6 +658,11 @@ if __name__ == '__main__':
         # No previous data, re-calculate
         if len(hr.items) == 0:
             # Get formula
+            formula = hr.get_formula()
+            # Check formula valid
+            if len(formula) == 0:
+                continue
+            filter_items_by_formula(items, formula)
             task_number = 10
             processes = []
             # Queue for results
@@ -426,6 +683,7 @@ if __name__ == '__main__':
             for i in range(task_number):
                 result = q.get()
                 if result['set_best'] == None:
+                    print('task {i} has no best result'.format(i=i))
                     continue
                 for j in range(len(result['benchmark_best'])):
                     # New is better
@@ -441,35 +699,36 @@ if __name__ == '__main__':
                         # Compare next parameter
                         pass
             # Update excel sheet
-            ws = WB['hero']
-            ws['U{idx}'.format(idx=idx_hero + 2)] = set_best[0]
-            ws['V{idx}'.format(idx=idx_hero + 2)] = set_best[1]
-            ws['W{idx}'.format(idx=idx_hero + 2)] = set_best[2]
-            ws['X{idx}'.format(idx=idx_hero + 2)] = set_best[3]
-            ws['Y{idx}'.format(idx=idx_hero + 2)] = set_best[4]
-            ws['Z{idx}'.format(idx=idx_hero + 2)] = set_best[5]
-            WB.save(pth_data)
-            # Set items as 'used'
-            items['weapon'][set_best[0]]['used'] = True
-            items['head'][set_best[1]]['used'] = True
-            items['armor'][set_best[2]]['used'] = True
-            items['neck'][set_best[3]]['used'] = True
-            items['ring'][set_best[4]]['used'] = True
-            items['shoe'][set_best[5]]['used'] = True
-            # Equip item on the hero
-            hr.strip()
-            hr.equip(items['weapon'][set_best[0]])
-            hr.equip(items['head'][set_best[1]])
-            hr.equip(items['armor'][set_best[2]])
-            hr.equip(items['neck'][set_best[3]])
-            hr.equip(items['ring'][set_best[4]])
-            hr.equip(items['shoe'][set_best[5]])
-            # Print result
-            print(benchmark_best)
-            print(items['weapon'][set_best[0]])
-            print(items['head'][set_best[1]])
-            print(items['armor'][set_best[2]])
-            print(items['neck'][set_best[3]])
-            print(items['ring'][set_best[4]])
-            print(items['shoe'][set_best[5]])
+            if set_best != None:
+                ws = WB['hero']
+                ws['X{idx}'.format(idx=idx_hero + 2)] = set_best[0]
+                ws['Y{idx}'.format(idx=idx_hero + 2)] = set_best[1]
+                ws['Z{idx}'.format(idx=idx_hero + 2)] = set_best[2]
+                ws['AA{idx}'.format(idx=idx_hero + 2)] = set_best[3]
+                ws['AB{idx}'.format(idx=idx_hero + 2)] = set_best[4]
+                ws['AC{idx}'.format(idx=idx_hero + 2)] = set_best[5]
+                WB.save(pth_data)
+                # Set items as 'used'
+                items['weapon'][set_best[0]]['used'] = True
+                items['head'][set_best[1]]['used'] = True
+                items['armor'][set_best[2]]['used'] = True
+                items['neck'][set_best[3]]['used'] = True
+                items['ring'][set_best[4]]['used'] = True
+                items['shoe'][set_best[5]]['used'] = True
+                # Equip item on the hero
+                hr.strip()
+                hr.equip(items['weapon'][set_best[0]])
+                hr.equip(items['head'][set_best[1]])
+                hr.equip(items['armor'][set_best[2]])
+                hr.equip(items['neck'][set_best[3]])
+                hr.equip(items['ring'][set_best[4]])
+                hr.equip(items['shoe'][set_best[5]])
+                # Print result
+                print(benchmark_best)
+                # print(items['weapon'][set_best[0]])
+                # print(items['head'][set_best[1]])
+                # print(items['armor'][set_best[2]])
+                # print(items['neck'][set_best[3]])
+                # print(items['ring'][set_best[4]])
+                # print(items['shoe'][set_best[5]])
         idx_hero += 1

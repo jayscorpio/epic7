@@ -1,5 +1,6 @@
 from openpyxl import load_workbook
 import multiprocessing as mp
+from configparser import ConfigParser
 
 class Hero:
     def __init__(self):
@@ -242,6 +243,9 @@ class Hero:
             vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
             if status['FU']:
                 return vl * 1.3
+            return vl
+        elif criteria == 'DF':
+            vl = status['DF']
             return vl
         else:
             print('unexpected criteria {nm}'.format(nm=criteria))
@@ -557,6 +561,16 @@ def calc_item_score_on_formula(item, formula):
                     result['CTa'] = attribute['value']
                 elif attribute['type'] == 'CDa':
                     result['CDa'] = attribute['value']
+        elif criteria == 'DF':
+            if item['set'] == 'DF':
+                result['DF set'] = 1
+            else:
+                result['DF set'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'DFa':
+                    result['DFa'] = attribute['value']
+                elif attribute['type'] == 'DFp':
+                    result['DFp'] = attribute['value']
         else:
             print('unknown criteria {m}'.format(m=criteria))
     return result
@@ -637,9 +651,10 @@ def filter_items_by_formula(items, formula):
         print('filtered {n}% {t}'.format(n=ctr/len(dt)*100, t=itype))
 if __name__ == '__main__':
     # Open excel data
-    # pth_data = r'S:/e7/test.xlsx'
-    # pth_data = r'S:/e7/data.xlsx'
-    pth_data = r'D:/SJ/e7/data.xlsx'
+    cfg = ConfigParser()
+    cfg.read('config.ini')
+    task_number = int(cfg['CompuPower']['ThreadNumber'])
+    pth_data = cfg['Files']['InputData']
     WB = load_workbook(pth_data)
     # Load items data
     items = {}
@@ -663,7 +678,7 @@ if __name__ == '__main__':
             if len(formula) == 0:
                 continue
             filter_items_by_formula(items, formula)
-            task_number = 10
+            
             processes = []
             # Queue for results
             q = mp.Queue()

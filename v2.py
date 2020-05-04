@@ -1,6 +1,7 @@
 from openpyxl import load_workbook
 import multiprocessing as mp
 from configparser import ConfigParser
+import datetime
 
 class Hero:
     def __init__(self):
@@ -307,12 +308,24 @@ def load_sheet_hero(holder, items):
         })
         # Check previous item data
         if rw[23].value is not None:
-            hero.equip(items['weapon'][int(rw[23].value)])
-            hero.equip(items['head'][int(rw[24].value)])
-            hero.equip(items['armor'][int(rw[25].value)])
-            hero.equip(items['neck'][int(rw[26].value)])
-            hero.equip(items['ring'][int(rw[27].value)])
-            hero.equip(items['shoe'][int(rw[28].value)])
+            for itm in items['weapon']:
+                if itm['id'] == int(rw[23].value) - 1:
+                    hero.equip(itm)
+            for itm in items['head']:
+                if itm['id'] == int(rw[24].value) - 1:
+                    hero.equip(itm)
+            for itm in items['armor']:
+                if itm['id'] == int(rw[25].value) - 1:
+                    hero.equip(itm)
+            for itm in items['neck']:
+                if itm['id'] == int(rw[26].value) - 1:
+                    hero.equip(itm)
+            for itm in items['ring']:
+                if itm['id'] == int(rw[27].value) - 1:
+                    hero.equip(itm)
+            for itm in items['shoe']:
+                if itm['id'] == int(rw[28].value) - 1:
+                    hero.equip(itm)
             # Remove used item from the list
             for itm in items['weapon']:
                 if itm['id'] == int(rw[23].value) - 1:
@@ -665,9 +678,9 @@ if __name__ == '__main__':
             if len(formula) == 0:
                 continue
             items_filtered = filter_items_by_formula(items, formula)
-            print('Calculate {nm} possibilities'.format(
-                nm=len(items_filtered['weapon'])*len(items_filtered['head'])*len(items_filtered['armor'])*len(items_filtered['neck'])*len(items_filtered['ring'])*len(items_filtered['shoe'])
-            ))
+            ctr_total = len(items_filtered['weapon'])*len(items_filtered['head'])*len(items_filtered['armor'])*len(items_filtered['neck'])*len(items_filtered['ring'])*len(items_filtered['shoe'])
+            print('Calculate {nm} possibilities'.format(nm=ctr_total))
+            tm_st =datetime.datetime.now()
             # Debug with single thread
             if False:
                 hero = hr.copy()
@@ -778,4 +791,7 @@ if __name__ == '__main__':
                     # print(items['neck'][set_best[3]])
                     # print(items['ring'][set_best[4]])
                     # print(items['shoe'][set_best[5]])
+            tm_delta = datetime.datetime.now() - tm_st
+            print('Used {tm}'.format(tm=tm_delta))
+            print('Performance: {nm} p/s'.format(nm=ctr_total/tm_delta.seconds))
         idx_hero += 1

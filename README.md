@@ -1,9 +1,8 @@
 # e7
 Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
 
-Preconditions
-  1. python3
-  2. openpyxl
+Installation
+  run install.bat (Windows)
 
 Usage
   1. fill data.xlsx

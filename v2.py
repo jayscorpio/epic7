@@ -252,18 +252,22 @@ class Hero:
 def load_sheet_item(_type, _holder):
     _holder[_type] = []
     ws = WB[_type]
+    idx = 0
     for rw in ws.rows:
-        # 'used' by default False
-        wp = {'used': False}
-        wp['set'] = rw[0].value
-        wp['attributes'] = []
+        itm = {}
+        # Index
+        itm['id'] = idx
+        itm['set'] = rw[0].value
+        itm['attributes'] = []
         for i in range(5):
             if rw[i * 2 + 1].value == None:
                 continue
-            wp['attributes'].append(
+            itm['attributes'].append(
                 {'type': rw[i * 2 + 1].value, 'value': rw[i * 2 + 2].value}
             )
-        _holder[_type].append(wp)
+        _holder[_type].append(itm)
+        # Increase index
+        idx += 1
 def load_sheet_hero(holder, items):
     ws = WB['hero']
     idx = 0
@@ -281,11 +285,11 @@ def load_sheet_hero(holder, items):
             'ATp': rw[4].value,
             'ATa': rw[3].value,
             'DF': rw[5].value,
-            'DFp': rw[6].value,
-            'DFa': rw[7].value,
+            'DFp': rw[7].value,
+            'DFa': rw[6].value,
             'HP': rw[8].value,
-            'HPp': rw[9].value,
-            'HPa': rw[10].value,
+            'HPp': rw[10].value,
+            'HPa': rw[9].value,
             'SP': rw[11].value,
             'SPa': rw[12].value,
             'CT': rw[13].value,
@@ -309,12 +313,31 @@ def load_sheet_hero(holder, items):
             hero.equip(items['neck'][int(rw[26].value)])
             hero.equip(items['ring'][int(rw[27].value)])
             hero.equip(items['shoe'][int(rw[28].value)])
-            items['weapon'][int(rw[23].value)]['used'] = True
-            items['head'][int(rw[24].value)]['used'] = True
-            items['armor'][int(rw[25].value)]['used'] = True
-            items['neck'][int(rw[26].value)]['used'] = True
-            items['ring'][int(rw[27].value)]['used'] = True
-            items['shoe'][int(rw[28].value)]['used'] = True
+            # Remove used item from the list
+            for itm in items['weapon']:
+                if itm['id'] == int(rw[23].value) - 1:
+                    items['weapon'].remove(itm)
+                    break
+            for itm in items['head']:
+                if itm['id'] == int(rw[24].value) - 1:
+                    items['head'].remove(itm)
+                    break
+            for itm in items['armor']:
+                if itm['id'] == int(rw[25].value) - 1:
+                    items['armor'].remove(itm)
+                    break
+            for itm in items['neck']:
+                if itm['id'] == int(rw[26].value) - 1:
+                    items['neck'].remove(itm)
+                    break
+            for itm in items['ring']:
+                if itm['id'] == int(rw[27].value) - 1:
+                    items['ring'].remove(itm)
+                    break
+            for itm in items['shoe']:
+                if itm['id'] == int(rw[28].value) - 1:
+                    items['shoe'].remove(itm)
+                    break
         holder.append(hero)
         idx += 1
 def wear(_piece, _sum):
@@ -323,49 +346,22 @@ def wear(_piece, _sum):
     # Add attributes
     for attr in _piece['attributes']:
         _sum[attr['type']] += int(attr['value'])
-def calc_benchmark_group(data, hero, idx, total, queue):
+def calc_benchmark_group(items, hero, idx, total, queue):
     # By default benchmark parameter number is 3
     benchmark_best = [0, 0, 0]
     set_best = None
+    hero_st = {'AT': 0, 'DF': 0, 'HP': 0, 'SP': 0, 'CT': 0, 'CD': 0, 'HT': 0, 'EV': 0}
     idx_wp = 0
-    idx_hd = 0
-    idx_am = 0
-    idx_nk = 0
-    idx_rg = 0
-    idx_sh = 0
-    for wp in data['weapon']:
+    for wp in items['weapon']:
         # Fileter by index
         if idx_wp % total != idx:
             idx_wp += 1
             continue
-        if wp['used'] or wp['filtered']:
-            idx_wp += 1
-            continue
-        idx_hd = 0
-        for hd in data['head']:
-            if hd['used'] or hd['filtered']:
-                idx_hd += 1
-                continue
-            idx_am = 0
-            for am in data['armor']:
-                if am['used'] or am['filtered']:
-                    idx_am += 1
-                    continue
-                idx_nk = 0
-                for nk in data['neck']:
-                    if nk['used'] or nk['filtered']:
-                        idx_nk += 1
-                        continue
-                    idx_rg = 0
-                    for rg in data['ring']:
-                        if rg['used'] or rg['filtered']:
-                            idx_rg += 1
-                            continue
-                        idx_sh = 0
-                        for sh in data['shoe']:
-                            if sh['used'] or sh['filtered']:
-                                idx_sh += 1
-                                continue
+        for hd in items['head']:
+            for am in items['armor']:
+                for nk in items['neck']:
+                    for rg in items['ring']:
+                        for sh in items['shoe']:
                             hero.strip()
                             hero.equip(wp)
                             hero.equip(hd)
@@ -384,14 +380,26 @@ def calc_benchmark_group(data, hero, idx, total, queue):
                                 if benchmark_best[i] < benchmark[i]:
                                     # Use new
                                     benchmark_best = benchmark
+                                    if 'id' not in wp:
+                                        print(wp)
                                     set_best = [
-                                        idx_wp,
-                                        idx_hd,
-                                        idx_am,
-                                        idx_nk,
-                                        idx_rg,
-                                        idx_sh,
+                                        wp['id'],
+                                        hd['id'],
+                                        am['id'],
+                                        nk['id'],
+                                        rg['id'],
+                                        sh['id'],
                                     ]
+                                    hero_st = {
+                                        'AT': hero.get_status()['AT'],
+                                        'DF': hero.get_status()['DF'],
+                                        'HP': hero.get_status()['HP'],
+                                        'SP': hero.get_status()['SP'],
+                                        'CT': hero.get_status()['CT'],
+                                        'CD': hero.get_status()['CD'],
+                                        'HT': hero.get_status()['HT'],
+                                        'EV': hero.get_status()['EV'],
+                                    }
                                 # New is worse
                                 elif benchmark_best[i] > benchmark[i]:
                                     # Next please
@@ -400,26 +408,12 @@ def calc_benchmark_group(data, hero, idx, total, queue):
                                 else:
                                     # Go to next parameter
                                     pass
-                            idx_sh += 1
-                        idx_rg += 1
-                    idx_nk += 1
-                idx_am += 1
-            idx_hd += 1
         idx_wp += 1
-    print('core {i} finished with {j} data set'.format(
-        i=idx, j=idx_wp * idx_hd * idx_am * idx_nk * idx_rg * idx_sh
-    ))
-    queue.put({'set_best': set_best, 'benchmark_best': benchmark_best})
-# '''
-# To filter items that has been used.
-# '''
-# def filter_items_by_used(items):
-#     result = {}
-#     for itype, dt in items.items():
-#         result_items = []
-#         for item in dt:
-#             if not item['used']:
-                # result_items.append()
+    queue.put({
+        'set_best': set_best,
+        'benchmark_best': benchmark_best,
+        'hero_st': hero_st
+    })
 def calc_item_score_on_formula(item, formula):
     result = {}
     for criteria in formula:
@@ -578,20 +572,13 @@ def calc_item_score_on_formula(item, formula):
 To filter items that contributes nothing to the formula.
 '''
 def filter_items_by_formula(items, formula):
+    result = {}
     for itype, dt in items.items():
+        # Prepare marks
         marks = {}
-        # Counter for how many items filtered
-        ctr = 0
-        idx = 0
+        # Prepare good indexes
+        idxs_good = set()
         for item in dt:
-            # This item is already used
-            if item['used']:
-                # Just ignore
-                ctr += 1
-                idx += 1
-                continue
-            # By default item is not filtered
-            items[itype][idx]['filtered'] = False
             # Calculate this item
             mark = calc_item_score_on_formula(item, formula)
             # Compare with previous items
@@ -631,24 +618,24 @@ def filter_items_by_formula(items, formula):
                     idxs_beaten.add(idx_mark_prev)
             # Remove beaten ones
             for i in idxs_beaten:
-                if i == 72:
-                    print('catch')
                 marks.pop(i)
-                # Mark it in original data
-                items[itype][i]['filtered'] = True
-                ctr += 1
+                # Remove it from good indexes
+                idxs_good.remove(i)
             # This one is not beaten
             if not flg_beaten:
                 # Add into marks
-                marks[idx] = mark
+                marks[item['id']] = mark
+                # Add into good indexes
+                idxs_good.add(item['id'])
             # This one is beaten
             else:
-                # Mark filtered
-                items[itype][idx]['filtered'] = True
-                ctr += 1
-            idx += 1
-        # Display how many filtered
-        print('filtered {n}% {t}'.format(n=ctr/len(dt)*100, t=itype))
+                pass
+        # Prepare result type
+        result[itype] = []
+        for itm in dt:
+            if itm['id'] in idxs_good:
+                result[itype].append(itm)
+    return result
 if __name__ == '__main__':
     # Open excel data
     cfg = ConfigParser()
@@ -658,7 +645,7 @@ if __name__ == '__main__':
     WB = load_workbook(pth_data)
     # Load items data
     items = {}
-    # Load weapon data
+    # Load each sheet
     load_sheet_item('weapon', items)
     load_sheet_item('head', items)
     load_sheet_item('armor', items)
@@ -677,73 +664,118 @@ if __name__ == '__main__':
             # Check formula valid
             if len(formula) == 0:
                 continue
-            filter_items_by_formula(items, formula)
-            
-            processes = []
-            # Queue for results
-            q = mp.Queue()
-            for i in range(task_number):
+            items_filtered = filter_items_by_formula(items, formula)
+            print('Calculate {nm} possibilities'.format(
+                nm=len(items_filtered['weapon'])*len(items_filtered['head'])*len(items_filtered['armor'])*len(items_filtered['neck'])*len(items_filtered['ring'])*len(items_filtered['shoe'])
+            ))
+            # Debug with single thread
+            if False:
                 hero = hr.copy()
-                process = mp.Process(
-                    target=calc_benchmark_group,
-                    args=(items, hero, i, task_number, q)
-                )
-                processes.append(process)
-                process.start()
-            for i in range(task_number):
-                processes[i].join()
-            # Choose best result
-            benchmark_best = [0, 0, 0]
-            set_best = None
-            for i in range(task_number):
-                result = q.get()
-                if result['set_best'] == None:
-                    print('task {i} has no best result'.format(i=i))
-                    continue
-                for j in range(len(result['benchmark_best'])):
-                    # New is better
-                    if result['benchmark_best'][j] > benchmark_best[j]:
-                        benchmark_best = result['benchmark_best']
-                        set_best = result['set_best']
-                    # New is worse
-                    elif result['benchmark_best'][j] < benchmark_best[j]:
-                        # Give up this result
-                        break
-                    # New is same
-                    else:
-                        # Compare next parameter
-                        pass
-            # Update excel sheet
-            if set_best != None:
-                ws = WB['hero']
-                ws['X{idx}'.format(idx=idx_hero + 2)] = set_best[0]
-                ws['Y{idx}'.format(idx=idx_hero + 2)] = set_best[1]
-                ws['Z{idx}'.format(idx=idx_hero + 2)] = set_best[2]
-                ws['AA{idx}'.format(idx=idx_hero + 2)] = set_best[3]
-                ws['AB{idx}'.format(idx=idx_hero + 2)] = set_best[4]
-                ws['AC{idx}'.format(idx=idx_hero + 2)] = set_best[5]
-                WB.save(pth_data)
-                # Set items as 'used'
-                items['weapon'][set_best[0]]['used'] = True
-                items['head'][set_best[1]]['used'] = True
-                items['armor'][set_best[2]]['used'] = True
-                items['neck'][set_best[3]]['used'] = True
-                items['ring'][set_best[4]]['used'] = True
-                items['shoe'][set_best[5]]['used'] = True
-                # Equip item on the hero
-                hr.strip()
-                hr.equip(items['weapon'][set_best[0]])
-                hr.equip(items['head'][set_best[1]])
-                hr.equip(items['armor'][set_best[2]])
-                hr.equip(items['neck'][set_best[3]])
-                hr.equip(items['ring'][set_best[4]])
-                hr.equip(items['shoe'][set_best[5]])
-                # Print result
-                print(benchmark_best)
-                # print(items['weapon'][set_best[0]])
-                # print(items['head'][set_best[1]])
-                # print(items['armor'][set_best[2]])
-                # print(items['neck'][set_best[3]])
-                # print(items['ring'][set_best[4]])
-                # print(items['shoe'][set_best[5]])
+                q = mp.Queue()
+                calc_benchmark_group(items_filtered, hero, 0, 1, q)
+            # Normal running with multiple threads
+            else:
+                processes = []
+                # Queue for results
+                q = mp.Queue()
+                for i in range(task_number):
+                    hero = hr.copy()
+                    process = mp.Process(
+                        target=calc_benchmark_group,
+                        args=(items_filtered, hero, i, task_number, q)
+                    )
+                    processes.append(process)
+                    process.start()
+                for i in range(task_number):
+                    processes[i].join()
+                # Choose best result
+                benchmark_best = [0, 0, 0]
+                set_best = None
+                for i in range(task_number):
+                    result = q.get()
+                    if result['set_best'] != None:
+                        for j in range(len(result['benchmark_best'])):
+                            # New is better
+                            if result['benchmark_best'][j] > benchmark_best[j]:
+                                benchmark_best = result['benchmark_best']
+                                set_best = result['set_best']
+                                hero_st = result['hero_st']
+                            # New is worse
+                            elif result['benchmark_best'][j] < benchmark_best[j]:
+                                # Give up this result
+                                break
+                            # New is same
+                            else:
+                                # Compare next parameter
+                                pass
+                # Update excel sheet
+                if set_best != None:
+                    # Target sheet
+                    ws = WB['hero']
+                    # Target row
+                    idx_row = idx_hero + 2
+                    ws['X{idx}'.format(idx=idx_row)] = set_best[0] + 1
+                    ws['Y{idx}'.format(idx=idx_row)] = set_best[1] + 1
+                    ws['Z{idx}'.format(idx=idx_row)] = set_best[2] + 1
+                    ws['AA{idx}'.format(idx=idx_row)] = set_best[3] + 1
+                    ws['AB{idx}'.format(idx=idx_row)] = set_best[4] + 1
+                    ws['AC{idx}'.format(idx=idx_row)] = set_best[5] + 1
+                    # Update benchmark for comparing
+                    if len(benchmark_best) > 0:
+                        ws['AD{idx}'.format(idx=idx_row)] = benchmark_best[0]
+                        if len(benchmark_best) > 1:
+                            ws['AE{idx}'.format(idx=idx_row)] = benchmark_best[1]
+                            if len(benchmark_best) > 2:
+                                ws['AF{idx}'.format(idx=idx_row)] = benchmark_best[2]
+                    ws['AG{idx}'.format(idx=idx_row)] = hero_st['AT']
+                    ws['AH{idx}'.format(idx=idx_row)] = hero_st['DF']
+                    ws['AI{idx}'.format(idx=idx_row)] = hero_st['HP']
+                    ws['AJ{idx}'.format(idx=idx_row)] = hero_st['SP']
+                    ws['AK{idx}'.format(idx=idx_row)] = hero_st['CT']
+                    ws['AL{idx}'.format(idx=idx_row)] = hero_st['CD']
+                    ws['AM{idx}'.format(idx=idx_row)] = hero_st['HT']
+                    ws['AN{idx}'.format(idx=idx_row)] = hero_st['EV']
+                    # Save Excel
+                    WB.save(pth_data)
+                    # Remove used item from the list
+                    for itm in items['weapon']:
+                        if itm['id'] == set_best[0]:
+                            items['weapon'].remove(itm)
+                            break
+                    for itm in items['head']:
+                        if itm['id'] == set_best[1]:
+                            items['head'].remove(itm)
+                            break
+                    for itm in items['armor']:
+                        if itm['id'] == set_best[2]:
+                            items['armor'].remove(itm)
+                            break
+                    for itm in items['neck']:
+                        if itm['id'] == set_best[3]:
+                            items['neck'].remove(itm)
+                            break
+                    for itm in items['ring']:
+                        if itm['id'] == set_best[4]:
+                            items['ring'].remove(itm)
+                            break
+                    for itm in items['shoe']:
+                        if itm['id'] == set_best[5]:
+                            items['shoe'].remove(itm)
+                            break
+                    # Equip item on the hero
+                    # hr.strip()
+                    # hr.equip(items['weapon'][set_best[0]])
+                    # hr.equip(items['head'][set_best[1]])
+                    # hr.equip(items['armor'][set_best[2]])
+                    # hr.equip(items['neck'][set_best[3]])
+                    # hr.equip(items['ring'][set_best[4]])
+                    # hr.equip(items['shoe'][set_best[5]])
+                    # Print result
+                    print(benchmark_best)
+                    # print(items['weapon'][set_best[0]])
+                    # print(items['head'][set_best[1]])
+                    # print(items['armor'][set_best[2]])
+                    # print(items['neck'][set_best[3]])
+                    # print(items['ring'][set_best[4]])
+                    # print(items['shoe'][set_best[5]])
         idx_hero += 1

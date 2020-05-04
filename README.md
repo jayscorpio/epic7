@@ -3,7 +3,7 @@ Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
 
 Installation
 
-  run install.bat (Windows)
+    run install.bat (Windows)
 
 Usage
   1. fill data.xlsx

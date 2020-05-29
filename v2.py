@@ -167,7 +167,7 @@ class Hero:
         result['CT'] = vl
         # CD
         vl = data['CD'] + data['CDa']
-        if ctr_sets['CT'] > 3:
+        if ctr_sets['CD'] > 3:
             vl += 40
         result['CD'] = vl
         # HT
@@ -725,6 +725,16 @@ if __name__ == '__main__':
                 if set_best != None:
                     # Target sheet
                     ws = WB['hero']
+                    # Debug
+                    # hero = hr.copy()
+                    # hero.strip()
+                    # hero.equip(items['weapon'][set_best[0]])
+                    # hero.equip(items['head'][set_best[1]])
+                    # hero.equip(items['armor'][set_best[2]])
+                    # hero.equip(items['neck'][set_best[3]])
+                    # hero.equip(items['ring'][set_best[4]])
+                    # hero.equip(items['shoe'][set_best[5]])
+                    # benchmark = hero.get_benchmark()
                     # Target row
                     idx_row = idx_hero + 2
                     ws['X{idx}'.format(idx=idx_row)] = set_best[0] + 1

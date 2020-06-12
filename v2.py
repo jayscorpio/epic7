@@ -228,6 +228,11 @@ class Hero:
             return self.calc_criteria('DMG', status) * status['SP']
         elif criteria == 'HT':
             return status['HT']
+        elif criteria.startswith('HT'):
+            vl = int(criteria[2:])
+            if status['HT'] >= vl:
+                return 1
+            return 0
         elif criteria == 'CT':
             return status['CT']
         elif criteria == 'FB':
@@ -522,6 +527,8 @@ def calc_item_score_on_formula(item, formula):
             for attribute in item['attributes']:
                 if attribute['type'] == 'HTa':
                     result['HTa'] = attribute['value']
+        elif criteria.startswith('HT'):
+            pass
         elif criteria == 'FB':
             if item['set'] == 'FB':
                 result['FB set'] = 1
@@ -726,14 +733,23 @@ if __name__ == '__main__':
                     # Target sheet
                     ws = WB['hero']
                     # Debug
+                    # The index used here is incorrect, shall use .id
                     # hero = hr.copy()
                     # hero.strip()
-                    # hero.equip(items['weapon'][set_best[0]])
-                    # hero.equip(items['head'][set_best[1]])
-                    # hero.equip(items['armor'][set_best[2]])
-                    # hero.equip(items['neck'][set_best[3]])
-                    # hero.equip(items['ring'][set_best[4]])
-                    # hero.equip(items['shoe'][set_best[5]])
+                    # if set_best[0] != None:
+                    #     hero.equip(items['weapon'][set_best[0]])
+                    # if set_best[1] != None:
+                    #     hero.equip(items['head'][set_best[1]])
+                    # if set_best[2] != None:
+                    #     hero.equip(items['armor'][set_best[2]])
+                    # if set_best[3] != None:
+                    #     hero.equip(items['neck'][set_best[3]])
+                    # if set_best[4] != None:
+                    #     print(len(items['ring']))
+                    #     print(set_best[4])
+                    #     hero.equip(items['ring'][set_best[4]])
+                    # if set_best[5] != None:
+                    #     hero.equip(items['shoe'][set_best[5]])
                     # benchmark = hero.get_benchmark()
                     # Target row
                     idx_row = idx_hero + 2
@@ -803,5 +819,8 @@ if __name__ == '__main__':
                     # print(items['shoe'][set_best[5]])
             tm_delta = datetime.datetime.now() - tm_st
             print('Used {tm}'.format(tm=tm_delta))
-            print('Performance: {nm} p/s'.format(nm=ctr_total/tm_delta.seconds))
+            if tm_delta.seconds != 0:
+                print('Performance: {nm} p/s'.format(
+                    nm=ctr_total/tm_delta.seconds
+                ))
         idx_hero += 1

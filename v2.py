@@ -217,6 +217,11 @@ class Hero:
     def calc_criteria(self, criteria, status):
         if criteria == 'SP':
             return status['SP']
+        elif criteria.startswith('SPu'):
+            threshold = int(criteria[3:])
+            if status['SP'] < threshold:
+                return status['SP']
+            return 0
         elif criteria == 'HP':
             return status['HP']
         elif criteria == 'DMG':
@@ -226,6 +231,8 @@ class Hero:
             return vl
         elif criteria == 'DPS':
             return self.calc_criteria('DMG', status) * status['SP']
+        elif criteria == 'DPSS':
+            return self.calc_criteria('DMG', status) * status['SP'] * status['SP']
         elif criteria == 'HT':
             return status['HT']
         elif criteria.startswith('HT'):
@@ -241,6 +248,11 @@ class Hero:
             return 0
         elif criteria == 'TANK':
             return status['HP'] * (1 + status['DF'] / 300)
+        elif criteria.startswith('TANKo'):
+            vl = int(criteria[5:])
+            if status['HP'] * (1 + status['DF'] / 300) >= vl:
+                return 1
+            return 0
         elif criteria == 'BL':
             if status['BL']:
                 return 1
@@ -443,7 +455,7 @@ def calc_item_score_on_formula(item, formula):
             for attribute in item['attributes']:
                 if attribute['type'] == 'CTa':
                     result['CTa'] = attribute['value']
-        elif criteria == 'DPS':
+        elif criteria in ('DPS', 'DPSS'):
             if item['set'] == 'CT':
                 result['CT set'] = 1
             else:
@@ -475,7 +487,7 @@ def calc_item_score_on_formula(item, formula):
                     result['ATp'] = attribute['value']
                 elif attribute['type'] == 'SPa':
                     result['SPa'] = attribute['value']
-        elif criteria == 'SP':
+        elif criteria.startswith('SP'):
             if item['set'] == 'SP':
                 result['SP set'] = 1
             else:
@@ -528,7 +540,7 @@ def calc_item_score_on_formula(item, formula):
                 if attribute['type'] == 'HTa':
                     result['HTa'] = attribute['value']
         elif criteria.startswith('HT'):
-            pass
+            result['HTCompare'] = 1
         elif criteria == 'FB':
             if item['set'] == 'FB':
                 result['FB set'] = 1
@@ -552,6 +564,8 @@ def calc_item_score_on_formula(item, formula):
                     result['DFa'] = attribute['value']
                 if attribute['type'] == 'DFp':
                     result['DFp'] = attribute['value']
+        elif criteria.startswith('TANKo'):
+            result['TankCompare'] = 1
         elif criteria == 'BL':
             if item['set'] == 'BL':
                 result['BL set'] = 1

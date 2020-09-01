@@ -2,6 +2,7 @@ from openpyxl import load_workbook
 import multiprocessing as mp
 from configparser import ConfigParser
 import datetime
+import statistics
 
 class Hero:
     def __init__(self):
@@ -219,29 +220,59 @@ class Hero:
             return status['SP']
         elif criteria.startswith('SPu'):
             threshold = int(criteria[3:])
-            if status['SP'] < threshold:
-                return status['SP']
+            if status['SP'] <= threshold:
+                return 1
+            return 0
+        elif criteria.startswith('SPo'):
+            threshold = int(criteria[3:])
+            if status['SP'] >= threshold:
+                return 1
             return 0
         elif criteria == 'HP':
             return status['HP']
+        elif criteria == 'CMGnFU':
+            vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
+            return vl
+        elif criteria == 'CMG':
+            vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
+            if status['FU']:
+                return vl * 1.3
+            return vl
+        elif criteria == 'DMGnFU':
+            vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['CT'] * status['CD'] / 100
+            return vl
         elif criteria == 'DMG':
             vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['CT'] * status['CD'] / 100
             if status['FU']:
                 return vl * 1.3
             return vl
+        elif criteria == 'DPSnFU':
+            return self.calc_criteria('DMG', status) * status['SP']
         elif criteria == 'DPS':
             return self.calc_criteria('DMG', status) * status['SP']
+            if status['FU']:
+                return vl * 1.3
+        elif criteria == 'DPSSnFU':
+            return self.calc_criteria('DMG', status) * status['SP'] * status['SP']
         elif criteria == 'DPSS':
             return self.calc_criteria('DMG', status) * status['SP'] * status['SP']
+            if status['FU']:
+                return vl * 1.3
         elif criteria == 'HT':
             return status['HT']
-        elif criteria.startswith('HT'):
-            vl = int(criteria[2:])
-            if status['HT'] >= vl:
+        elif criteria.startswith('HTo'):
+            threshold = int(criteria[3:])
+            if status['HT'] >= threshold:
                 return 1
             return 0
         elif criteria == 'CT':
             return status['CT']
+        elif criteria.startswith('CTo'):
+            threshold = int(criteria[3:])
+            if status['CT'] >= threshold:
+                return 1
+            else:
+                return 0
         elif criteria == 'FB':
             if status['FB']:
                 return 1
@@ -249,19 +280,14 @@ class Hero:
         elif criteria == 'TANK':
             return status['HP'] * (1 + status['DF'] / 300)
         elif criteria.startswith('TANKo'):
-            vl = int(criteria[5:])
-            if status['HP'] * (1 + status['DF'] / 300) >= vl:
+            threshold = int(criteria[5:])
+            if status['HP'] * (1 + status['DF'] / 300) >= threshold:
                 return 1
             return 0
         elif criteria == 'BL':
             if status['BL']:
                 return 1
             return 0
-        elif criteria == 'CMG':
-            vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
-            if status['FU']:
-                return vl * 1.3
-            return vl
         elif criteria == 'DF':
             vl = status['DF']
             return vl
@@ -403,7 +429,6 @@ def calc_benchmark_group(items, hero, idx, total, queue):
                             # Check benchmark valid
                             if benchmark == None:
                                 continue
-                            # print('[{a},{b},{c},{d},{e},{f},{g}]'.format(a=idx_wp,b=idx_hd,c=idx_am,d=idx_nk,e=idx_rg,f=idx_sh,g=benchmark))
                             # Loop into all parameters
                             for i in range(len(benchmark)):
                                 # New is better
@@ -445,16 +470,172 @@ def calc_benchmark_group(items, hero, idx, total, queue):
         'hero_st': hero_st
     })
 def calc_item_score_on_formula(item, formula):
-    result = {}
+    """Calculate score for the item according to the formula
+
+    Args:
+        item ([type]): [description]
+        formula ([type]): [description]
+
+    Returns:
+        [list]: each element is the score for one criteria
+    """
+    result = []
+    # Loop all criteria
     for criteria in formula:
+        result.append(calc_item_score_on_criteria(item, criteria))
+    return result
+def calc_item_score_on_criteria(item, criteria):
+    """Calculate score for the item according to the criteria
+
+    Args:
+        item (dict): item data
+        criteria (str): criteria used
+
+    Returns:
+        dict: result containing each
+    """
+    result = {}
+    # Check if it is threshold criteria
+    if 'o' in criteria or 'u' in criteria:
+        # Threshold criteria cannot be used to filter items
+        # Even if the item has no benefit to the criteria, it does not mean
+        # that it cannot be used for the other criteria
+        result['score'] = 0
+    else:
         if criteria == 'CT':
             if item['set'] == 'CT':
                 result['CT set'] = 1
             else:
                 result['CT set'] = 0
+            result['CTa'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'CTa':
                     result['CTa'] = attribute['value']
+        elif criteria == 'CMGnFU':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            result['CTa'] = 0
+            result['CDa'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+        elif criteria == 'CMG':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            if item['set'] == 'FU':
+                result['FU set'] = 1
+            else:
+                result['FU set'] = 0
+            result['CTa'] = 0
+            result['CDa'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+        elif criteria == 'DMGnFU':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'AT':
+                result['AT set'] = 1
+            else:
+                result['AT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            result['CTa'] = 0
+            result['ATa'] = 0
+            result['CDa'] = 0
+            result['ATp'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'ATa':
+                    result['ATa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+                elif attribute['type'] == 'ATp':
+                    result['ATp'] = attribute['value']
+        elif criteria == 'DMG':
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'AT':
+                result['AT set'] = 1
+            else:
+                result['AT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            if item['set'] == 'FU':
+                result['FU set'] = 1
+            else:
+                result['FU set'] = 0
+            result['CTa'] = 0
+            result['ATa'] = 0
+            result['CDa'] = 0
+            result['ATp'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'ATa':
+                    result['ATa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+                elif attribute['type'] == 'ATp':
+                    result['ATp'] = attribute['value']
+        elif criteria in ('DPSnFU', 'DPSSnFU'):
+            if item['set'] == 'CT':
+                result['CT set'] = 1
+            else:
+                result['CT set'] = 0
+            if item['set'] == 'AT':
+                result['AT set'] = 1
+            else:
+                result['AT set'] = 0
+            if item['set'] == 'CD':
+                result['CD set'] = 1
+            else:
+                result['CD set'] = 0
+            if item['set'] == 'SP':
+                result['SP set'] = 1
+            else:
+                result['SP set'] = 0
+            result['CTa'] = 0
+            result['ATa'] = 0
+            result['CDa'] = 0
+            result['ATp'] = 0
+            result['SPa'] = 0
+            for attribute in item['attributes']:
+                if attribute['type'] == 'CTa':
+                    result['CTa'] = attribute['value']
+                elif attribute['type'] == 'ATa':
+                    result['ATa'] = attribute['value']
+                elif attribute['type'] == 'CDa':
+                    result['CDa'] = attribute['value']
+                elif attribute['type'] == 'ATp':
+                    result['ATp'] = attribute['value']
+                elif attribute['type'] == 'SPa':
+                    result['SPa'] = attribute['value']
         elif criteria in ('DPS', 'DPSS'):
             if item['set'] == 'CT':
                 result['CT set'] = 1
@@ -476,6 +657,11 @@ def calc_item_score_on_formula(item, formula):
                 result['SP set'] = 1
             else:
                 result['SP set'] = 0
+            result['CTa'] = 0
+            result['ATa'] = 0
+            result['CDa'] = 0
+            result['ATp'] = 0
+            result['SPa'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'CTa':
                     result['CTa'] = attribute['value']
@@ -487,11 +673,12 @@ def calc_item_score_on_formula(item, formula):
                     result['ATp'] = attribute['value']
                 elif attribute['type'] == 'SPa':
                     result['SPa'] = attribute['value']
-        elif criteria.startswith('SP'):
+        elif criteria == 'SP':
             if item['set'] == 'SP':
                 result['SP set'] = 1
             else:
                 result['SP set'] = 0
+            result['SPa'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'SPa':
                     result['SPa'] = attribute['value']
@@ -500,47 +687,22 @@ def calc_item_score_on_formula(item, formula):
                 result['HP set'] = 1
             else:
                 result['HP set'] = 0
+            result['HPa'] = 0
+            result['HPp'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'HPa':
                     result['HPa'] = attribute['value']
                 if attribute['type'] == 'HPp':
                     result['HPp'] = attribute['value']
-        elif criteria == 'DMG':
-            if item['set'] == 'CT':
-                result['CT set'] = 1
-            else:
-                result['CT set'] = 0
-            if item['set'] == 'AT':
-                result['AT set'] = 1
-            else:
-                result['AT set'] = 0
-            if item['set'] == 'CD':
-                result['CD set'] = 1
-            else:
-                result['CD set'] = 0
-            if item['set'] == 'FU':
-                result['FU set'] = 1
-            else:
-                result['FU set'] = 0
-            for attribute in item['attributes']:
-                if attribute['type'] == 'CTa':
-                    result['CTa'] = attribute['value']
-                elif attribute['type'] == 'ATa':
-                    result['ATa'] = attribute['value']
-                elif attribute['type'] == 'CDa':
-                    result['CDa'] = attribute['value']
-                elif attribute['type'] == 'ATp':
-                    result['ATp'] = attribute['value']
         elif criteria == 'HT':
             if item['set'] == 'HT':
                 result['HT set'] = 1
             else:
                 result['HT set'] = 0
+            result['HTa'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'HTa':
                     result['HTa'] = attribute['value']
-        elif criteria.startswith('HT'):
-            result['HTCompare'] = 1
         elif criteria == 'FB':
             if item['set'] == 'FB':
                 result['FB set'] = 1
@@ -555,6 +717,10 @@ def calc_item_score_on_formula(item, formula):
                 result['DF set'] = 1
             else:
                 result['DF set'] = 0
+            result['HPa'] = 0
+            result['HPp'] = 0
+            result['DFa'] = 0
+            result['DFp'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'HPa':
                     result['HPa'] = attribute['value']
@@ -564,36 +730,18 @@ def calc_item_score_on_formula(item, formula):
                     result['DFa'] = attribute['value']
                 if attribute['type'] == 'DFp':
                     result['DFp'] = attribute['value']
-        elif criteria.startswith('TANKo'):
-            result['TankCompare'] = 1
         elif criteria == 'BL':
             if item['set'] == 'BL':
                 result['BL set'] = 1
             else:
                 result['BL set'] = 0
-        elif criteria == 'CMG':
-            if item['set'] == 'CT':
-                result['CT set'] = 1
-            else:
-                result['CT set'] = 0
-            if item['set'] == 'CD':
-                result['CD set'] = 1
-            else:
-                result['CD set'] = 0
-            if item['set'] == 'FU':
-                result['FU set'] = 1
-            else:
-                result['FU set'] = 0
-            for attribute in item['attributes']:
-                if attribute['type'] == 'CTa':
-                    result['CTa'] = attribute['value']
-                elif attribute['type'] == 'CDa':
-                    result['CDa'] = attribute['value']
         elif criteria == 'DF':
             if item['set'] == 'DF':
                 result['DF set'] = 1
             else:
                 result['DF set'] = 0
+            result['DFa'] = 0
+            result['DFp'] = 0
             for attribute in item['attributes']:
                 if attribute['type'] == 'DFa':
                     result['DFa'] = attribute['value']
@@ -601,81 +749,134 @@ def calc_item_score_on_formula(item, formula):
                     result['DFp'] = attribute['value']
         else:
             print('unknown criteria {m}'.format(m=criteria))
+            result['no determined'] = True
     return result
+def compare_score(mark_current, mark_previous):
+    """Compare score
+
+    Args:
+        mark_current (dict): candidate mark
+        mark_previous (dict): baseline mark
+
+    Returns:
+        str: 'better'/'worse'/'same'/'unknown'
+    """
+    flg_any_better = False
+    flg_any_worse = False
+    flg_any_sure_worse = False
+    for ky, vl_this in mark_current.items():
+        if ky in mark_previous:
+            base = mark_previous[ky]
+        else:
+            base = 0
+        if vl_this > base:
+            flg_any_better = True
+        elif vl_this < base:
+            flg_any_worse = True
+            if not ky.endswith(' set'):
+                flg_any_sure_worse = True
+    if flg_any_better:
+        if not flg_any_worse and not flg_any_sure_worse:
+            return 'better'
+        else:
+            return 'unknown'
+    else:
+        if flg_any_worse:
+            if flg_any_sure_worse:
+                return 'worse'
+            else:
+                return 'unknown'
+        else:
+            return 'same'
 '''
 To filter items that contributes nothing to the formula.
 '''
 def filter_items_by_formula(items, formula):
-    result = {}
-    for itype, dt in items.items():
-        # Prepare marks
-        marks = {}
-        # Prepare good indexes
-        idxs_good = set()
-        for item in dt:
-            # Calculate this item
-            mark = calc_item_score_on_formula(item, formula)
-            # Compare with previous items
-            flg_beaten = False
-            idxs_beaten = set()
-            # Loop all previous items
-            for idx_mark_prev, mark_prev in marks.items():
-                flg_any_better = False
-                # This one is better than previous one ?
-                for ky, vl in mark.items():
-                    if ky in mark_prev:
-                        base = mark_prev[ky]
-                    else:
-                        base = 0
-                    if vl > base:
-                        flg_any_better = True
-                        break
-                # Beat this one?
-                if not flg_any_better:
-                    # Beat it
-                    flg_beaten = True
-                    # Stop comparing
+    """Filter items according to the formula.
+    Each criteria is used to filter all the rest candidate items until all
+    criteria is checked.
+
+    Args:
+        items ([list]): The original items pool
+        formula ([list]): consists of criteria
+
+    Returns:
+        [dict]: filtered items in 6 classes
+    """
+    # Prepare good indexes
+    idxs_good = set()
+    # Candidate initialized as all items
+    candidates = items.copy()
+    # Prepare scoreboard
+    scoreboard = {}
+    # Loop all items in candidates
+    for item in candidates:
+        # Calculate this item
+        mark = calc_item_score_on_formula(item, formula)
+        # Compare with previous items
+        compare_result = []
+        # Score the index of the beaten ones
+        idxs_beaten = set()
+        flg_beaten = False
+        # Loop all previous items
+        for idx_mark_prev, mark_prev in scoreboard.items():
+            # Compare all criteria
+            for idx_crt in range(len(mark)):
+                compare_result.append(
+                    compare_score(mark[idx_crt], mark_prev[idx_crt])
+                )
+            # Whether abondon this one?
+            # Found 'worse' before 'unknown' or 'better'
+            for cr in compare_result:
+                if cr in ('unknown', 'better'):
+                    flg_beaten = False
                     break
-                flg_any_worse = False
-                # Previous one is better than this one?
-                for ky, vl in mark_prev.items():
-                    if ky in mark:
-                        base = mark[ky]
-                    else:
-                        base = 0
-                    if vl > base:
-                        flg_any_worse = True
-                        break
-                # Beat previous one?
-                if not flg_any_worse:
-                    # Beat the previous one
-                    idxs_beaten.add(idx_mark_prev)
-            # Remove beaten ones
-            for i in idxs_beaten:
-                marks.pop(i)
-                # Remove it from good indexes
-                idxs_good.remove(i)
-            # This one is not beaten
+                elif cr == 'worse':
+                    flg_beaten = True
+                    break
             if not flg_beaten:
-                # Add into marks
-                marks[item['id']] = mark
-                # Add into good indexes
-                idxs_good.add(item['id'])
-            # This one is beaten
-            else:
-                pass
-        # Prepare result type
-        result[itype] = []
-        for itm in dt:
-            if itm['id'] in idxs_good:
-                result[itype].append(itm)
+                # Whether abondon previous one?
+                # Found 'better' before 'worse' or 'unknown'
+                for cr in compare_result:
+                    if cr in ('unknown', 'worse'):
+                        break
+                    elif cr == 'better':
+                        # Beat previous one
+                        idxs_beaten.add(idx_mark_prev)
+                        break
+        # Remove beaten ones
+        for i in idxs_beaten:
+            scoreboard.pop(i)
+            # Remove it from good indexes
+            idxs_good.remove(i)
+        # This one is not beaten
+        if not flg_beaten:
+            # Add into marks
+            scoreboard[item['id']] = mark
+            # Add into good indexes
+            idxs_good.add(item['id'])
+        # This one is beaten
+        else:
+            # Do not add
+            pass
+    # Prepare result type
+    result = []
+    for itm in candidates:
+        if itm['id'] in idxs_good:
+            result.append(itm)
+    print('filtered {n0} out of {n1} items'.format(
+        n0=len(result), n1=len(items)
+    ))
     return result
+
 if __name__ == '__main__':
     # Open excel data
     cfg = ConfigParser()
     cfg.read('config.ini')
     task_number = int(cfg['CompuPower']['ThreadNumber'])
     pth_data = cfg['Files']['InputData']
+    # Speed calculation
+    cal_spd = []
     WB = load_workbook(pth_data)
     # Load items data
     items = {}
@@ -698,10 +899,18 @@ if __name__ == '__main__':
             # Check formula valid
             if len(formula) == 0:
                 continue
-            items_filtered = filter_items_by_formula(items, formula)
+            # Filter items
+            items_filtered = {}
+            # Loop all 6 classes to be filtered
+            for itm_type, itms in items.items():
+                items_filtered[itm_type] = filter_items_by_formula(itms, formula)
             ctr_total = len(items_filtered['weapon'])*len(items_filtered['head'])*len(items_filtered['armor'])*len(items_filtered['neck'])*len(items_filtered['ring'])*len(items_filtered['shoe'])
-            print('Calculate {nm} possibilities'.format(nm=ctr_total))
             tm_st =datetime.datetime.now()
+            print('Start at {tm}'.format(tm=tm_st))
+            print('Calculate {nm} possibilities'.format(nm=ctr_total))
+            if len(cal_spd) > 0:
+                estimation_s = ctr_total / statistics.mean(cal_spd)
+                print('Estimated finish at {tm}'.format(tm=estimation_s))
             # Debug with single thread
             if False:
                 hero = hr.copy()
@@ -815,26 +1024,12 @@ if __name__ == '__main__':
                         if itm['id'] == set_best[5]:
                             items['shoe'].remove(itm)
                             break
-                    # Equip item on the hero
-                    # hr.strip()
-                    # hr.equip(items['weapon'][set_best[0]])
-                    # hr.equip(items['head'][set_best[1]])
-                    # hr.equip(items['armor'][set_best[2]])
-                    # hr.equip(items['neck'][set_best[3]])
-                    # hr.equip(items['ring'][set_best[4]])
-                    # hr.equip(items['shoe'][set_best[5]])
-                    # Print result
-                    print(benchmark_best)
-                    # print(items['weapon'][set_best[0]])
-                    # print(items['head'][set_best[1]])
-                    # print(items['armor'][set_best[2]])
-                    # print(items['neck'][set_best[3]])
-                    # print(items['ring'][set_best[4]])
-                    # print(items['shoe'][set_best[5]])
             tm_delta = datetime.datetime.now() - tm_st
             print('Used {tm}'.format(tm=tm_delta))
-            if tm_delta.seconds != 0:
+            if tm_delta.seconds > 10:
+                spd = ctr_total/tm_delta.seconds
                 print('Performance: {nm} p/s'.format(
                     nm=ctr_total/tm_delta.seconds
                 ))
+                cal_spd.append(spd)
         idx_hero += 1

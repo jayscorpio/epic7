@@ -45,7 +45,7 @@ class Hero:
         if dict_data['SPo'] != 0:
             self.thresholds['SPo'] = dict_data['SPo']
         if dict_data['TANKo'] != 0:
-            self.thresholds['CTo'] = dict_data['TANKo']
+            self.thresholds['TANKo'] = dict_data['TANKo']
         if dict_data['EVo'] != 0:
             self.thresholds['Evo'] = dict_data['EVo']
         if dict_data['BL'] != 0:

@@ -12,7 +12,7 @@ class Hero:
         self.thresholds = {}
     def copy(self):
         new_hero = Hero()
-        new_hero.formula    = self.formula
+        new_hero.formula    = self.formula.copy()
         new_hero.AT         = self.AT
         new_hero.ATp        = self.ATp
         new_hero.ATa        = self.ATa
@@ -32,6 +32,7 @@ class Hero:
         new_hero.HTa        = self.HTa
         new_hero.EV         = self.EV
         new_hero.EVa        = self.EVa
+        new_hero.thresholds = self.thresholds.copy()
         return new_hero
     def load(self, dict_data):
         # Load data
@@ -432,8 +433,8 @@ def wear(_piece, _sum):
     # Add attributes
     for attr in _piece['attributes']:
         _sum[attr['type']] += int(attr['value'])
-def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
-    if debug:
+def calc_benchmark_group(items, hero, idx, total, queue, priority, flg_debug=False):
+    if flg_debug:
         print('calc_benchmark_group called with')
         print('idx={idx}'.format(idx=idx))
         print('total={total}'.format(total=total))
@@ -463,12 +464,13 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             items_flattened['r'].append(itm['item'])
         for itm in items['shoe'][priority]:
             items_flattened['s'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     # 2. Use new ones to combine old ones
     # New weapons
@@ -492,12 +494,13 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             if i < len(items['shoe']):
                 for itm in items['shoe'][i]:
                     items_flattened['s'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     # New heads
     if priority < len(items['head']):
@@ -520,12 +523,13 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             if i < len(items['shoe']):
                 for itm in items['shoe'][i]:
                     items_flattened['s'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     # New armors
     if priority < len(items['armor']):
@@ -548,12 +552,13 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             if i < len(items['shoe']):
                 for itm in items['shoe'][i]:
                     items_flattened['s'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     # New necks
     if priority < len(items['neck']):
@@ -576,12 +581,13 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             if i < len(items['shoe']):
                 for itm in items['shoe'][i]:
                     items_flattened['s'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     # New rings
     if priority < len(items['ring']):
@@ -604,12 +610,13 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             if i < len(items['shoe']):
                 for itm in items['shoe'][i]:
                     items_flattened['s'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     # New shoes
     if priority < len(items['shoe']):
@@ -632,16 +639,17 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, debug=False):
             if i < len(items['ring']):
                 for itm in items['ring'][i]:
                     items_flattened['r'].append(itm['item'])
-        print('Thread {nm} joins calculating {pos}'.format(
-            nm=idx,
-            pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-        ))
+        if flg_debug:
+            print('Thread {nm} joins calculating {pos}'.format(
+                nm=idx,
+                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
+            ))
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result
+            hero, items_flattened, total, idx, result, flg_debug
         )
     queue.put(result)
 def calc_benchmark_group_on_items_set(
-    hero, items, thread_num, idx_thread, result_prev=None
+    hero, items, thread_num, idx_thread, result_prev=None, flg_debug=False
 ):
     # By default benchmark parameter number is 3
     if result_prev == None:
@@ -717,7 +725,8 @@ def calc_benchmark_group_on_items_set(
                                         else:
                                             # Go to next parameter
                                             pass
-    print('acutally calculated {num}'.format(num=cnt))
+    if flg_debug:
+        print('actually calculated {num}'.format(num=cnt))
     return {
         'benchmark_best': benchmark_best,
         'set_best': set_best,

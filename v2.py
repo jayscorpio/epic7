@@ -104,11 +104,14 @@ class Hero:
                 if status['EV'] < value:
                     return False
             elif criteria == 'BL':
-                return status['BL']
+                if not status['BL']:
+                    return False
             elif criteria == 'FB':
-                return status['FB']
+                if not status['FB']:
+                    return False
             elif criteria == 'IM':
-                return status['IM']
+                if not status['IM']:
+                    return False
         return True
     def strip(self):
         """To remove all clothes
@@ -1164,6 +1167,8 @@ if __name__ == '__main__':
                         items_priorized, hero, 0, 1, q, i, flg_debug
                     )
                     result_best = q.get()
+                    if result_best['set_best'] == None:
+                        result_best = None
                 # Normal running with multiple threads
                 else:
                     processes = []

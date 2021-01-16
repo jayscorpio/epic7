@@ -47,7 +47,7 @@ class Hero:
         if dict_data['TANKo'] != 0:
             self.thresholds['TANKo'] = dict_data['TANKo']
         if dict_data['EVo'] != 0:
-            self.thresholds['Evo'] = dict_data['EVo']
+            self.thresholds['EVo'] = dict_data['EVo']
         if dict_data['BL'] != 0:
             self.thresholds['BL'] = dict_data['BL']
         if dict_data['FB'] != 0:
@@ -112,6 +112,8 @@ class Hero:
             elif criteria == 'IM':
                 if not status['IM']:
                     return False
+            else:
+                print('error')
         return True
     def strip(self):
         """To remove all clothes
@@ -288,21 +290,26 @@ class Hero:
             vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['CT'] * status['CD'] / 100
             return vl
         elif criteria == 'DMG':
-            vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['CT'] * status['CD'] / 100
+            vl = self.calc_criteria('DMGnFU', status)
             if status['FU']:
                 return vl * 1.3
             return vl
         elif criteria == 'DPSnFU':
             return self.calc_criteria('DMG', status) * status['SP']
         elif criteria == 'DPS':
-            vl =  self.calc_criteria('DMG', status) * status['SP']
+            vl = self.calc_criteria('DPSnFU', status)
             if status['FU']:
                 return vl * 1.3
             return vl
         elif criteria == 'DPSSnFU':
-            return self.calc_criteria('DMG', status) * status['SP'] * status['SP']
+            return self.calc_criteria('DPS', status) * status['SP']
         elif criteria == 'DPSS':
-            vl = self.calc_criteria('DMG', status) * status['SP'] * status['SP']
+            vl = self.calc_criteria('DPSSnFU', status)
+            if status['FU']:
+                return vl * 1.3
+            return vl
+        elif criteria == 'DPSD':
+            vl = self.calc_criteria('DPS', status) * status['DF']
             if status['FU']:
                 return vl * 1.3
             return vl
@@ -321,7 +328,7 @@ class Hero:
             print('unexpected criteria {nm}'.format(nm=criteria))
 def load_sheet_item(_type, _holder):
     _holder[_type] = []
-    ws = WB[_type]
+    ws = wb_item[_type]
     idx = 0
     for rw in ws.rows:
         itm = {}
@@ -339,7 +346,7 @@ def load_sheet_item(_type, _holder):
         # Increase index
         idx += 1
 def load_sheet_hero(holder, items):
-    ws = WB['hero']
+    ws = wb_hero['hero']
     idx = 0
     for rw in ws.rows:
         if idx == 0:
@@ -839,6 +846,10 @@ def calc_item_score_on_criteria(item, criteria, result=None):
         # CT + CD + AT + SP + FU = DPSnFU + FU
         result = calc_item_score_on_criteria(item, 'DPSnFU', result)
         result = calc_item_score_on_criteria(item, 'FU', result)
+    elif criteria in ('DPSD', ):
+        # CT + CD + AT + SP + FU + DF = DPS + DF
+        result = calc_item_score_on_criteria(item, 'DPS', result)
+        result = calc_item_score_on_criteria(item, 'DF', result)
     elif criteria == 'HP':
         # HP
         value = 0
@@ -1117,10 +1128,12 @@ if __name__ == '__main__':
     cfg = ConfigParser()
     cfg.read('config.ini')
     task_number = int(cfg['CompuPower']['ThreadNumber'])
-    pth_data = cfg['Files']['InputData']
+    pth_item = cfg['Files']['ItemData']
+    pth_hero = cfg['Files']['HeroData']
     # Speed calculation
     cal_spd = []
-    WB = load_workbook(pth_data)
+    wb_item = load_workbook(pth_item)
+    wb_hero = load_workbook(pth_hero)
     # Load items data
     items = {}
     # Load each sheet
@@ -1220,7 +1233,7 @@ if __name__ == '__main__':
                 if result_best != None:
                     # Update excel sheet
                     # Target sheet
-                    ws = WB['hero']
+                    ws = wb_hero['hero']
                     # Debug
                     # The index used here is incorrect, shall use .id
                     # hero = hr.copy()
@@ -1263,7 +1276,7 @@ if __name__ == '__main__':
                     ws['BP{idx}'.format(idx=idx_row)] = result_best['hero_st']['HT']
                     ws['BQ{idx}'.format(idx=idx_row)] = result_best['hero_st']['EV']
                     # Save Excel
-                    WB.save(pth_data)
+                    wb_hero.save(pth_hero)
                     # Remove used item from the list
                     for itm in items['weapon']:
                         if itm['id'] == result_best['set_best'][0]:

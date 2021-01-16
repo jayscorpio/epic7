@@ -1,6 +1,8 @@
 # e7
 Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
 
+I should find time to update this very out-dated README...
+
 Installation
 
     run install.bat (Windows)

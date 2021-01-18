@@ -1306,8 +1306,8 @@ if __name__ == '__main__':
             os.mkdir(os.path.join('Results', plan_set_name))
         except:
             pass
-        path_result = os.path.join('Results', plan_set_name, plan_name + '.txt')
         for plan_name, plan in plan_set.items():
+            path_result = os.path.join('Results', plan_set_name, plan_name + '.txt')
             f = open(path_result, 'w', encoding="utf-8")
             f.close()
             # Copy items

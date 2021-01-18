@@ -534,17 +534,9 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, flg_debug=Fal
     """
     if flg_debug:
         print('calc_benchmark_group called with')
-        print('idx={idx}'.format(idx=idx))
-        print('total={total}'.format(total=total))
-        print('queue={queue}'.format(queue=queue))
+        print('thread {idx} of {total}'.format(idx=idx, total=total))
         print('priority={priority}'.format(priority=priority))
     result = None
-    # Create a virgin flattened items list
-    items_flattened_orig = {}
-    for il in ITEMS_LIST:
-        items_flattened_orig[il[0][0]] = []
-        for itm in items[il[0]][priority]:
-            items_flattened_orig[il[0][0]].append(itm['item'])
     # 1. Use new ones only
     if priority < min([
         len(items['weapon']),
@@ -554,222 +546,55 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, flg_debug=Fal
         len(items['ring']),
         len(items['shoe']),
     ]):
-        items_flattened = items_flattened_orig.copy()
+        # Init data holder
+        items_flattened = {}
+        for il in ITEMS_LIST:
+            items_flattened[il[0][0]] = []
+        # Loop item kinds
+        for il in ITEMS_LIST:
+            # Loop items in target priority
+            for itm in items[il[0]][priority]:
+                # Add into holder
+                items_flattened[il[0][0]].append(itm['item'])
         if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
+            print('Thread {nm} joins calculating A {pos}'.format(
                 nm=idx,
                 pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
             ))
+        # Put all items in target priority to calculate
         result = calc_benchmark_group_on_items_set(
             hero, items_flattened, total, idx, result, flg_debug
         )
     # 2. Use new ones to combine old ones
     # Loop all kinds of items
     for il in ITEMS_LIST:
+        # New data exists?
         if priority < len(items[il[0]]):
-            items_flattened = items_flattened_orig.copy()
+            # Init data holder
+            items_flattened = {}
+            for il_1 in ITEMS_LIST:
+                items_flattened[il_1[0][0]] = []
             # Add the target item kind
             for itm in items[il[0]][priority]:
                 items_flattened[il[0][0]].append(itm['item'])
-            # Use the rest item kinds with old data
+            # Use the rest item kinds with all previous priority
             for i in range(priority):
-                if i < len(items['head']):
-                    for itm in items['head'][i]:
-                        items_flattened['h'].append(itm['item'])
-                if i < len(items['armor']):
-                    for itm in items['armor'][i]:
-                        items_flattened['a'].append(itm['item'])
-                if i < len(items['neck']):
-                    for itm in items['neck'][i]:
-                        items_flattened['n'].append(itm['item'])
-                if i < len(items['ring']):
-                    for itm in items['ring'][i]:
-                        items_flattened['r'].append(itm['item'])
-                if i < len(items['shoe']):
-                    for itm in items['shoe'][i]:
-                        items_flattened['s'].append(itm['item'])
+                for il_1 in ITEMS_LIST:
+                    # Escape target kind
+                    if il[0] == il_1[0]:
+                        continue
+                    # Prevent exceed list
+                    if i < len(items[il_1[0]]):
+                        for itm in items[il_1[0]][i]:
+                            items_flattened[il_1[0][0]].append(itm['item'])
             if flg_debug:
-                print('Thread {nm} joins calculating {pos}'.format(
+                print('Thread {nm} joins calculating B {pos}'.format(
                     nm=idx,
                     pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
                 ))
             result = calc_benchmark_group_on_items_set(
                 hero, items_flattened, total, idx, result, flg_debug
             )
-    # New weapons
-    if priority < len(items['weapon']):
-        items_flattened = {'w': [], 'h': [], 'a': [], 'n': [], 'r': [], 's': []}
-        for itm in items['weapon'][priority]:
-            items_flattened['w'].append(itm['item'])
-        for i in range(priority):
-            if i < len(items['head']):
-                for itm in items['head'][i]:
-                    items_flattened['h'].append(itm['item'])
-            if i < len(items['armor']):
-                for itm in items['armor'][i]:
-                    items_flattened['a'].append(itm['item'])
-            if i < len(items['neck']):
-                for itm in items['neck'][i]:
-                    items_flattened['n'].append(itm['item'])
-            if i < len(items['ring']):
-                for itm in items['ring'][i]:
-                    items_flattened['r'].append(itm['item'])
-            if i < len(items['shoe']):
-                for itm in items['shoe'][i]:
-                    items_flattened['s'].append(itm['item'])
-        if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
-                nm=idx,
-                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-            ))
-        result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
-        )
-    # New heads
-    if priority < len(items['head']):
-        items_flattened = {'w': [], 'h': [], 'a': [], 'n': [], 'r': [], 's': []}
-        for itm in items['head'][priority]:
-            items_flattened['h'].append(itm['item'])
-        for i in range(priority):
-            if i < len(items['weapon']):
-                for itm in items['weapon'][i]:
-                    items_flattened['w'].append(itm['item'])
-            if i < len(items['armor']):
-                for itm in items['armor'][i]:
-                    items_flattened['a'].append(itm['item'])
-            if i < len(items['neck']):
-                for itm in items['neck'][i]:
-                    items_flattened['n'].append(itm['item'])
-            if i < len(items['ring']):
-                for itm in items['ring'][i]:
-                    items_flattened['r'].append(itm['item'])
-            if i < len(items['shoe']):
-                for itm in items['shoe'][i]:
-                    items_flattened['s'].append(itm['item'])
-        if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
-                nm=idx,
-                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-            ))
-        result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
-        )
-    # New armors
-    if priority < len(items['armor']):
-        items_flattened = {'w': [], 'h': [], 'a': [], 'n': [], 'r': [], 's': []}
-        for itm in items['armor'][priority]:
-            items_flattened['a'].append(itm['item'])
-        for i in range(priority):
-            if i < len(items['weapon']):
-                for itm in items['weapon'][i]:
-                    items_flattened['w'].append(itm['item'])
-            if i < len(items['head']):
-                for itm in items['head'][i]:
-                    items_flattened['h'].append(itm['item'])
-            if i < len(items['neck']):
-                for itm in items['neck'][i]:
-                    items_flattened['n'].append(itm['item'])
-            if i < len(items['ring']):
-                for itm in items['ring'][i]:
-                    items_flattened['r'].append(itm['item'])
-            if i < len(items['shoe']):
-                for itm in items['shoe'][i]:
-                    items_flattened['s'].append(itm['item'])
-        if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
-                nm=idx,
-                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-            ))
-        result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
-        )
-    # New necks
-    if priority < len(items['neck']):
-        items_flattened = {'w': [], 'h': [], 'a': [], 'n': [], 'r': [], 's': []}
-        for itm in items['neck'][priority]:
-            items_flattened['n'].append(itm['item'])
-        for i in range(priority):
-            if i < len(items['weapon']):
-                for itm in items['weapon'][i]:
-                    items_flattened['w'].append(itm['item'])
-            if i < len(items['head']):
-                for itm in items['head'][i]:
-                    items_flattened['h'].append(itm['item'])
-            if i < len(items['armor']):
-                for itm in items['armor'][i]:
-                    items_flattened['a'].append(itm['item'])
-            if i < len(items['ring']):
-                for itm in items['ring'][i]:
-                    items_flattened['r'].append(itm['item'])
-            if i < len(items['shoe']):
-                for itm in items['shoe'][i]:
-                    items_flattened['s'].append(itm['item'])
-        if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
-                nm=idx,
-                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-            ))
-        result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
-        )
-    # New rings
-    if priority < len(items['ring']):
-        items_flattened = {'w': [], 'h': [], 'a': [], 'n': [], 'r': [], 's': []}
-        for itm in items['ring'][priority]:
-            items_flattened['r'].append(itm['item'])
-        for i in range(priority):
-            if i < len(items['weapon']):
-                for itm in items['weapon'][i]:
-                    items_flattened['w'].append(itm['item'])
-            if i < len(items['head']):
-                for itm in items['head'][i]:
-                    items_flattened['h'].append(itm['item'])
-            if i < len(items['armor']):
-                for itm in items['armor'][i]:
-                    items_flattened['a'].append(itm['item'])
-            if i < len(items['neck']):
-                for itm in items['neck'][i]:
-                    items_flattened['n'].append(itm['item'])
-            if i < len(items['shoe']):
-                for itm in items['shoe'][i]:
-                    items_flattened['s'].append(itm['item'])
-        if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
-                nm=idx,
-                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-            ))
-        result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
-        )
-    # New shoes
-    if priority < len(items['shoe']):
-        items_flattened = {'w': [], 'h': [], 'a': [], 'n': [], 'r': [], 's': []}
-        for itm in items['shoe'][priority]:
-            items_flattened['s'].append(itm['item'])
-        for i in range(priority):
-            if i < len(items['weapon']):
-                for itm in items['weapon'][i]:
-                    items_flattened['w'].append(itm['item'])
-            if i < len(items['head']):
-                for itm in items['head'][i]:
-                    items_flattened['h'].append(itm['item'])
-            if i < len(items['armor']):
-                for itm in items['armor'][i]:
-                    items_flattened['a'].append(itm['item'])
-            if i < len(items['neck']):
-                for itm in items['neck'][i]:
-                    items_flattened['n'].append(itm['item'])
-            if i < len(items['ring']):
-                for itm in items['ring'][i]:
-                    items_flattened['r'].append(itm['item'])
-        if flg_debug:
-            print('Thread {nm} joins calculating {pos}'.format(
-                nm=idx,
-                pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
-            ))
-        result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
-        )
     queue.put(result)
 def calc_benchmark_group_on_items_set(
     hero, items, thread_num, idx_thread, result_prev=None, flg_debug=False
@@ -1353,7 +1178,11 @@ if __name__ == '__main__':
                         # Increase the counter
                         if len(items_priorized[il[0]]) > i:
                             counter[il[1]] += len(items_priorized[il[0]][i])
-                    print('With {cntr} items'.format(cntr=counter))
+                    buff = 'Using '
+                    for il in ITEMS_LIST:
+                        buff += '{num}/{total} '.format(num=counter[il[1]], total=len(items[il[0]]))
+                    buff += 'items'
+                    print(buff)
                     # Debug with single thread
                     if flg_single_thread:
                         hero = hero.copy()

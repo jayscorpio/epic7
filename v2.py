@@ -1306,12 +1306,10 @@ if __name__ == '__main__':
             os.mkdir(os.path.join('Results', plan_set_name))
         except:
             pass
+        path_result = os.path.join('Results', plan_set_name, plan_name + '.txt')
         for plan_name, plan in plan_set.items():
-            open(
-                os.path.join('Results', plan_set_name, plan_name + '.txt'),
-                'w',
-                encoding="utf-8"
-            )
+            f = open(path_result, 'w', encoding="utf-8")
+            f.close()
             # Copy items
             items_copy = items.copy()
             # Calculate this plan
@@ -1320,7 +1318,9 @@ if __name__ == '__main__':
                 flg_found_same_results = False
                 hero_name = hero_plan['name']
                 if hero_name not in heroes:
-                    print('error hero [{nm}] not found'.format(nm=hero_name))
+                    f = open(path_result, 'a', encoding="utf-8")
+                    f.write('error hero [{nm}] not found\n'.format(nm=hero_name))
+                    f.close()
                     continue
                 hero = heroes[hero_name]
                 # Load plan to the hero
@@ -1413,11 +1413,7 @@ if __name__ == '__main__':
                                     flg_found_same_results = True
                     # Qualified result found
                     if result_best != None:
-                        with open(
-                            os.path.join('Results', plan_set_name, plan_name + '.txt'),
-                            'a',
-                            encoding="utf-8"
-                        ) as f:
+                        with open(path_result, 'a', encoding="utf-8") as f:
                             f.write(hero_name)
                             if flg_found_same_results:
                                 f.write('\t结果不唯一')

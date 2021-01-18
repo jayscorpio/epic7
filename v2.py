@@ -235,6 +235,9 @@ class Hero:
             'EVa': self.EVa,
         }
         for itm in self.items:
+            if itm['set'] not in ctr_sets:
+                print('error unknown set [{nm}]'.format(nm=item['set']))
+                continue
             ctr_sets[itm['set']] += 1
             for attrb in itm['attributes']:
                 data[attrb['type']] += attrb['value']

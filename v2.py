@@ -11,6 +11,18 @@ ITEMS_LIST = [
     ['ring', 4],
     ['shoe', 5]
 ]
+ITEM_SETS_LIST = [
+    'AT',
+    'DF',
+    'HP',
+    'SP',
+    'CT',
+    'CD',
+    'HT',
+    'EV',
+    'FU',
+    'TO'
+]
 BASIC_STATES_LIST = [
     'AT',
     'DF',
@@ -21,39 +33,28 @@ BASIC_STATES_LIST = [
     'HT',
     'EV'
 ]
-EXTRA_STATES_LIST = [
-    'ATp',
-    'ATa',
-    'DFp',
-    'DFa',
-    'HPp',
-    'HPa',
-    'SPa',
-    'CTa',
-    'CDa',
-    'HTa',
-    'EVa'
-]
 THRESHOLDS_LIST = [
     'CTo',
     'HTo',
     'SPo',
     'TANKo',
-    'EVo',
-    'BL',
-    'FB',
-    'IM'
+    'EVo'
 ]
 # Excel format
-PLAN_VALUES = {
+PLAN_COL_THRESHOLD_STATE = {
     4: 'CTo',
     5: 'HTo',
     6: 'SPo',
     7: 'TANKo',
-    8: 'EVo',
+    8: 'EVo'
+}
+PLAN_COL_THRESHOLD_SET = {
     9: 'BL',
     10: 'FB',
     11: 'IM',
+}
+PLAN_COL_ARTIFACT = 12
+PLAN_COL_STATE = {
     26: 'ATa',
     27: 'ATp',
     28: 'DFa',
@@ -67,13 +68,11 @@ PLAN_VALUES = {
     36: 'HPp',
     37: 'EVa',
 }
-PLAN_COL_ARTIFACT = 12
 class Hero:
     def __init__(self):
         """Init
         """
         self.items = []
-        self.thresholds = {}
     def copy(self):
         """Make a copy
         Inherits formula, states, and thresholds.
@@ -83,27 +82,25 @@ class Hero:
             Hero: the copy
         """
         new_hero = Hero()
-        new_hero.formula    = self.formula.copy()
         new_hero.AT         = self.AT
-        new_hero.ATp        = self.ATp
-        new_hero.ATa        = self.ATa
         new_hero.DF         = self.DF
-        new_hero.DFp        = self.DFp
-        new_hero.DFa        = self.DFa
         new_hero.HP         = self.HP
-        new_hero.HPp        = self.HPp
-        new_hero.HPa        = self.HPa
         new_hero.SP         = self.SP
-        new_hero.SPa        = self.SPa
         new_hero.CT         = self.CT
-        new_hero.CTa        = self.CTa
         new_hero.CD         = self.CD
-        new_hero.CDa        = self.CDa
         new_hero.HT         = self.HT
-        new_hero.HTa        = self.HTa
         new_hero.EV         = self.EV
+        new_hero.ATp        = self.ATp
+        new_hero.DFp        = self.DFp
+        new_hero.HPp        = self.HPp
+        new_hero.ATa        = self.ATa
+        new_hero.DFa        = self.DFa
+        new_hero.HPa        = self.HPa
+        new_hero.SPa        = self.SPa
+        new_hero.CTa        = self.CTa
+        new_hero.CDa        = self.CDa
+        new_hero.HTa        = self.HTa
         new_hero.EVa        = self.EVa
-        new_hero.thresholds = self.thresholds.copy()
         return new_hero
     def load(self, dict_data):
         """Load basic states
@@ -122,28 +119,22 @@ class Hero:
     def load_plan(self, dict_data):
         """Load plan
         Including:
-            formula list
             states update
             artifact
         Args:
             dict_data (dict): Plan to be calculated
         """
-        self.formula = dict_data['formula']
-        self.thresholds = {}
-        for tl in THRESHOLDS_LIST:
-            if dict_data[tl] != 0:
-                self.thresholds[tl] = dict_data[tl]
-        self.ATp = dict_data['ATp']
-        self.ATa = dict_data['ATa']
-        self.DFp = dict_data['DFp']
-        self.DFa = dict_data['DFa']
-        self.HPp = dict_data['HPp']
-        self.HPa = dict_data['HPa']
-        self.SPa = dict_data['SPa']
-        self.CTa = dict_data['CTa']
-        self.CDa = dict_data['CDa']
-        self.HTa = dict_data['HTa']
-        self.EVa = dict_data['EVa']
+        self.ATp = dict_data['states']['ATp']
+        self.DFp = dict_data['states']['DFp']
+        self.HPp = dict_data['states']['HPp']
+        self.ATa = dict_data['states']['ATa']
+        self.DFa = dict_data['states']['DFa']
+        self.HPa = dict_data['states']['HPa']
+        self.SPa = dict_data['states']['SPa']
+        self.CTa = dict_data['states']['CTa']
+        self.CDa = dict_data['states']['CDa']
+        self.HTa = dict_data['states']['HTa']
+        self.EVa = dict_data['states']['EVa']
         # Artifact
         name = dict_data['artifact']
         if name != None:
@@ -152,22 +143,9 @@ class Hero:
                 return
             self.ATa += artifacts[name]['ATa']
             self.HPa += artifacts[name]['HPa']
-    def set_formula(self, formula):
-        """Load formula
-
-        Args:
-            formula (list): formula list, top 3
-        """
-        self.formula = formula
-    def get_formula(self):
-        """To Get formula as a list
-
-        Returns:
-            list: formula
-        """
-        return self.formula
-    def chk_thresholds(self, status=None):
+    def chk_thresholds(self, thresholds, status=None):
         """To Check thresholds pass or not
+        TBD: It would be better to be used externally from Hero class
 
         Returns:
             bool: pass thresholds check
@@ -175,7 +153,7 @@ class Hero:
         """ Only update status when not provided for efficiency """
         if status == None:
             status = self.get_status()
-        for criteria, value in self.thresholds.items():
+        for criteria, value in thresholds.items():
             if criteria == 'CTo':
                 if status['CT'] < value:
                     return False
@@ -191,15 +169,6 @@ class Hero:
             elif criteria == 'EVo':
                 if status['EV'] < value:
                     return False
-            elif criteria == 'BL':
-                if not status['BL']:
-                    return False
-            elif criteria == 'FB':
-                if not status['FB']:
-                    return False
-            elif criteria == 'IM':
-                if not status['IM']:
-                    return False
             else:
                 print('error')
         return True
@@ -214,53 +183,60 @@ class Hero:
             item (dict): item data
         """
         self.items.append(item)
+    def get_sets(self):
+        result = set()
+        counter = {
+            'FB': 0,
+            'IM': 0,
+            'BL': 0,
+        }
+        for itm in self.items:
+            if itm['set'] not in counter:
+                continue
+            counter[itm['set']] += 1
+        # FB
+        if counter['FB'] > 3:
+            result.add('FB')
+        # IM
+        if counter['IM'] > 1:
+            result.add('IM')
+        # BL
+        if counter['BL'] > 3:
+            result.add('BL')
+        return result
     def get_status(self):
         """Get hero status
 
         Returns:
             dict: all kinds of status
         """
-        ctr_sets = {
-            'AT': 0,
-            'DF': 0,
-            'HP': 0,
-            'SP': 0,
-            'CT': 0,
-            'CD': 0,
-            'HT': 0,
-            'EV': 0,
-            'FB': 0,
-            'IM': 0,
-            'BL': 0,
-            'FU': 0,
-            'TO': 0,
-        }
+        counter_sets = {}
+        for i in ITEM_SETS_LIST:
+            counter_sets[i] = 0
         data = {
             'AT': self.AT,
-            'ATp': self.ATp,
-            'ATa': self.ATa,
             'DF': self.DF,
-            'DFp': self.DFp,
-            'DFa': self.DFa,
             'HP': self.HP,
-            'HPp': self.HPp,
-            'HPa': self.HPa,
             'SP': self.SP,
-            'SPa': self.SPa,
             'CT': self.CT,
-            'CTa': self.CTa,
             'CD': self.CD,
-            'CDa': self.CDa,
             'HT': self.HT,
-            'HTa': self.HTa,
             'EV': self.EV,
+            'ATp': self.ATp,
+            'DFp': self.DFp,
+            'HPp': self.HPp,
+            'ATa': self.ATa,
+            'DFa': self.DFa,
+            'HPa': self.HPa,
+            'SPa': self.SPa,
+            'CTa': self.CTa,
+            'CDa': self.CDa,
+            'HTa': self.HTa,
             'EVa': self.EVa,
         }
         for itm in self.items:
-            if itm['set'] not in ctr_sets:
-                print('error unknown set [{nm}]'.format(nm=item['set']))
-                continue
-            ctr_sets[itm['set']] += 1
+            if itm['set'] in counter_sets:
+                counter_sets[itm['set']] += 1
             for attrb in itm['attributes']:
                 data[attrb['type']] += attrb['value']
         result = {}
@@ -268,83 +244,77 @@ class Hero:
         vl = data['AT']
         vl_p = data['ATp']
         vl_a = data['ATa']
-        if ctr_sets['AT'] > 3:
+        if counter_sets['AT'] > 3:
             vl_p += 35
         result['AT'] = vl * (100 + vl_p) / 100 + vl_a
         # DF
         vl = data['DF']
         vl_p = data['DFp']
         vl_a = data['DFa']
-        if ctr_sets['DF'] > 1:
+        if counter_sets['DF'] > 1:
             vl_p += 15
-            if ctr_sets['DF'] > 3:
+            if counter_sets['DF'] > 3:
                 vl_p += 15
-                if ctr_sets['DF'] > 5:
+                if counter_sets['DF'] > 5:
                     vl_p += 15
         result['DF'] = vl * (100 + vl_p) / 100 + vl_a
         # HP
         vl = data['HP']
         vl_p = data['HPp']
         vl_a = data['HPa']
-        if ctr_sets['HP'] > 1:
+        if counter_sets['HP'] > 1:
             vl_p += 15
-            if ctr_sets['HP'] > 3:
+            if counter_sets['HP'] > 3:
                 vl_p += 15
-                if ctr_sets['HP'] > 5:
+                if counter_sets['HP'] > 5:
                     vl_p += 15
         result['HP'] = vl * (100 + vl_p) / 100 + vl_a
         # SP
         vl = data['SP']
         vl_a = data['SPa']
-        if ctr_sets['SP'] > 3:
+        if counter_sets['SP'] > 3:
             vl_p = 25
         else:
             vl_p = 0
         result['SP'] = vl * (100 + vl_p) / 100 + vl_a
         # CT
         vl = data['CT'] + data['CTa']
-        if ctr_sets['CT'] > 1:
+        if counter_sets['CT'] > 1:
             vl += 12
-            if ctr_sets['CT'] > 3:
+            if counter_sets['CT'] > 3:
                 vl += 12
-                if ctr_sets['CT'] > 5:
+                if counter_sets['CT'] > 5:
                     vl += 12
         if vl > 100:
             vl = 100
         result['CT'] = vl
         # CD
         vl = data['CD'] + data['CDa']
-        if ctr_sets['CD'] > 3:
+        if counter_sets['CD'] > 3:
             vl += 40
         result['CD'] = vl
         # HT
         vl = data['HT'] + data['HTa']
-        if ctr_sets['HT'] > 1:
+        if counter_sets['HT'] > 1:
             vl += 20
-            if ctr_sets['HT'] > 3:
+            if counter_sets['HT'] > 3:
                 vl += 20
-                if ctr_sets['HT'] > 5:
+                if counter_sets['HT'] > 5:
                     vl += 20
         result['HT'] = vl
         # EV
         vl = data['EV'] + data['EVa']
-        if ctr_sets['EV'] > 1:
+        if counter_sets['EV'] > 1:
             vl += 20
-            if ctr_sets['EV'] > 3:
+            if counter_sets['EV'] > 3:
                 vl += 20
-                if ctr_sets['EV'] > 5:
+                if counter_sets['EV'] > 5:
                     vl += 20
         result['EV'] = vl
-        # FB
-        result['FB'] = (ctr_sets['FB'] > 3)
         # FU
-        result['FU'] = (ctr_sets['FU'] > 3)
-        # IM
-        result['IM'] = (ctr_sets['IM'] > 1)
-        # BL
-        result['BL'] = (ctr_sets['BL'] > 3)
+        result['FU'] = (counter_sets['FU'] > 3)
         return result
-    def get_benchmark(self, status=None):
+    def get_benchmark(self, formula, status=None):
         """To calc benchmark
 
         Returns:
@@ -354,7 +324,7 @@ class Hero:
         """ Only update status when not provided for efficiency """
         if status == None:
             status = self.get_status()
-        for crtr in self.formula:
+        for crtr in formula:
             benchmark.append(self.calc_criteria(crtr, status))
         return benchmark
     def calc_criteria(self, criteria, status):
@@ -529,20 +499,36 @@ def load_sheet_plan(worksheet, holder):
             continue
         data = {}
         data['name'] = rw[0].value
+        # Formula
         formula = []
         for i in range(1, 3):
             if rw[i].value != None:
                 formula.append(rw[i].value)
         data['formula'] = formula
-        for idx, field in PLAN_VALUES.items():
+        # Thresholds
+        data['thresholds'] = {'states': {}}
+        # - Sets
+        data['thresholds']['sets'] = set()
+        for idx, field in PLAN_COL_THRESHOLD_SET.items():
+            if rw[idx].value in ('x', '1', 1):
+                data['thresholds']['sets'].add(field)
+        # - States
+        for idx, field in PLAN_COL_THRESHOLD_STATE.items():
             if rw[idx].value == None:
-                data[field] = 0
+                data['thresholds']['states'][field] = 0
             else:
-                data[field] = rw[idx].value
+                data['thresholds']['states'][field] = rw[idx].value
+        # States
+        data['states'] = {}
+        for idx, field in PLAN_COL_STATE.items():
+            if rw[idx].value == None:
+                data['states'][field] = 0
+            else:
+                data['states'][field] = rw[idx].value
         # Artifact
         data['artifact'] = rw[PLAN_COL_ARTIFACT].value
         holder.append(data)
-def calc_benchmark_group(items, hero, idx, total, queue, priority, flg_debug=False):
+def calc_benchmark_group(items, hero, formula, thresholds, idx, total, queue, priority, flg_debug=False):
     """Calculate the best benchmark of a group data
     It shall do several calculation with different comibination of items sets
     and find out the best one.
@@ -587,7 +573,7 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, flg_debug=Fal
             ))
         # Put all items in target priority to calculate
         result = calc_benchmark_group_on_items_set(
-            hero, items_flattened, total, idx, result, flg_debug
+            hero, items_flattened, formula, thresholds, total, idx, result, flg_debug=flg_debug
         )
     # 2. Use new ones to combine old ones
     # Loop all kinds of items
@@ -617,17 +603,18 @@ def calc_benchmark_group(items, hero, idx, total, queue, priority, flg_debug=Fal
                     pos=len(items_flattened['w'])*len(items_flattened['h'])*len(items_flattened['a'])*len(items_flattened['n'])*len(items_flattened['r']*len(items_flattened['s']))
                 ))
             result = calc_benchmark_group_on_items_set(
-                hero, items_flattened, total, idx, result, flg_debug
+                hero, items_flattened, formula, thresholds, total, idx, result, flg_debug=flg_debug
             )
     queue.put(result)
 def calc_benchmark_group_on_items_set(
-    hero, items, thread_num, idx_thread, result_prev=None, flg_debug=False
+    hero, items, formula, thresholds, thread_num, idx_thread, result_prev=None, flg_debug=False
 ):
     """Calculate the best benchmark with an items set
 
     Args:
         hero (Hero): Target hero
         items (dict): Items set, already de-priorized
+        thresholds (dict): Thresholds criteria
         thread_num (int): Thread number
         idx_thread (int): Thread index
         result_prev (dict, optional): The last calculated result. Defaults to
@@ -668,11 +655,19 @@ def calc_benchmark_group_on_items_set(
                                 hero.equip(nk)
                                 hero.equip(rg)
                                 hero.equip(sh)
+                                # Check sets criteria
+                                flg_chk_sets = True
+                                sets = hero.get_sets()
+                                for i in thresholds['sets']:
+                                    if i not in sets:
+                                        flg_chk_sets = False
+                                if not flg_chk_sets:
+                                    continue
                                 # Update status
                                 status = hero.get_status()
                                 # Check thresholds pass?
-                                if hero.chk_thresholds(status=status):
-                                    benchmark = hero.get_benchmark(status=status)
+                                if hero.chk_thresholds(thresholds['states'], status=status):
+                                    benchmark = hero.get_benchmark(formula, status=status)
                                     # Check benchmark valid
                                     if benchmark == None:
                                         continue
@@ -1153,6 +1148,11 @@ if __name__ == '__main__':
             items_copy = items.copy()
             # Calculate this plan
             for hero_plan in plan:
+                # Get formula
+                formula = hero_plan['formula']
+                # Check formula valid
+                if len(formula) == 0:
+                    continue
                 # Init flags
                 flg_found_same_results = False
                 hero_name = hero_plan['name']
@@ -1164,11 +1164,8 @@ if __name__ == '__main__':
                 hero = heroes[hero_name]
                 # Load plan to the hero
                 hero.load_plan(hero_plan)
-                # Get formula
-                formula = hero.get_formula()
-                # Check formula valid
-                if len(formula) == 0:
-                    continue
+                # Get Thresholds
+                thresholds = hero_plan['thresholds']
                 # Priorize items
                 items_priorized = {}
                 # Loop all 6 classes to be filtered
@@ -1202,7 +1199,7 @@ if __name__ == '__main__':
                         hero = hero.copy()
                         q = mp.Queue()
                         calc_benchmark_group(
-                            items_priorized, hero, 0, 1, q, i, flg_debug
+                            items_priorized, hero, formula, thresholds, 0, 1, q, i, flg_debug
                         )
                         result_best = q.get()
                         if result_best['set_best'] == None:
@@ -1219,6 +1216,8 @@ if __name__ == '__main__':
                                 args=(
                                     items_priorized,
                                     hero,
+                                    formula,
+                                    thresholds,
                                     idx_task,
                                     task_number,
                                     q,
@@ -1279,6 +1278,14 @@ if __name__ == '__main__':
                                 for atr in item['attributes']:
                                     f.write('\t'.join(['', atr['type'], str(atr['value'])]))
                                 f.write('\n')
+                            f.write('攻击力\t{nm}\n'.format(nm=result_best['hero_st']['AT']))
+                            f.write('防御力\t{nm}\n'.format(nm=result_best['hero_st']['DF']))
+                            f.write('生命力\t{nm}\n'.format(nm=result_best['hero_st']['HP']))
+                            f.write('暴击率\t{nm}\n'.format(nm=result_best['hero_st']['CT']))
+                            f.write('暴击伤害\t{nm}\n'.format(nm=result_best['hero_st']['CD']))
+                            f.write('效果命中\t{nm}\n'.format(nm=result_best['hero_st']['HT']))
+                            f.write('效果抗性\t{nm}\n'.format(nm=result_best['hero_st']['EV']))
+                            f.write('速度\t{nm}\n'.format(nm=result_best['hero_st']['SP']))
                         break
                 else:
                     print('error no suits can be found')

@@ -11,6 +11,39 @@ ITEMS_LIST = [
     ['ring', 4],
     ['shoe', 5]
 ]
+BASIC_STATES_LIST = [
+    'AT',
+    'DF',
+    'HP',
+    'SP',
+    'CT',
+    'CD',
+    'HT',
+    'EV'
+]
+EXTRA_STATES_LIST = [
+    'ATp',
+    'ATa',
+    'DFp',
+    'DFa',
+    'HPp',
+    'HPa',
+    'SPa',
+    'CTa',
+    'CDa',
+    'HTa',
+    'EVa'
+]
+THRESHOLDS_LIST = [
+    'CTo',
+    'HTo',
+    'SPo',
+    'TANKo',
+    'EVo',
+    'BL',
+    'FB',
+    'IM'
+]
 # Excel format
 PLAN_VALUES = {
     4: 'CTo',
@@ -97,22 +130,9 @@ class Hero:
         """
         self.formula = dict_data['formula']
         self.thresholds = {}
-        if dict_data['CTo'] != 0:
-            self.thresholds['CTo'] = dict_data['CTo']
-        if dict_data['HTo'] != 0:
-            self.thresholds['HTo'] = dict_data['HTo']
-        if dict_data['SPo'] != 0:
-            self.thresholds['SPo'] = dict_data['SPo']
-        if dict_data['TANKo'] != 0:
-            self.thresholds['TANKo'] = dict_data['TANKo']
-        if dict_data['EVo'] != 0:
-            self.thresholds['EVo'] = dict_data['EVo']
-        if dict_data['BL'] != 0:
-            self.thresholds['BL'] = dict_data['BL']
-        if dict_data['FB'] != 0:
-            self.thresholds['FB'] = dict_data['FB']
-        if dict_data['IM'] != 0:
-            self.thresholds['IM'] = dict_data['IM']
+        for tl in THRESHOLDS_LIST:
+            if dict_data[tl] != 0:
+                self.thresholds[tl] = dict_data[tl]
         self.ATp = dict_data['ATp']
         self.ATa = dict_data['ATa']
         self.DFp = dict_data['DFp']
@@ -146,13 +166,15 @@ class Hero:
             list: formula
         """
         return self.formula
-    def chk_thresholds(self):
+    def chk_thresholds(self, status=None):
         """To Check thresholds pass or not
 
         Returns:
             bool: pass thresholds check
         """
-        status = self.get_status()
+        """ Only update status when not provided for efficiency """
+        if status == None:
+            status = self.get_status()
         for criteria, value in self.thresholds.items():
             if criteria == 'CTo':
                 if status['CT'] < value:
@@ -322,14 +344,16 @@ class Hero:
         # BL
         result['BL'] = (ctr_sets['BL'] > 3)
         return result
-    def get_benchmark(self):
+    def get_benchmark(self, status=None):
         """To calc benchmark
 
         Returns:
             list: benchmark
         """
         benchmark = []
-        status = self.get_status()
+        """ Only update status when not provided for efficiency """
+        if status == None:
+            status = self.get_status()
         for crtr in self.formula:
             benchmark.append(self.calc_criteria(crtr, status))
         return benchmark
@@ -622,8 +646,6 @@ def calc_benchmark_group_on_items_set(
         benchmark_best = result_prev['benchmark_best']
         set_best = result_prev['set_best']
         hero_st = result_prev['hero_st']
-    # A counter
-    cnt = 0
     # An index for multi processing
     idx_thread_current = thread_num - 1
     for wp in items['w']:
@@ -639,7 +661,6 @@ def calc_benchmark_group_on_items_set(
                             else:
                                 idx_thread_current += 1
                             if idx_thread == idx_thread_current:
-                                cnt += 1
                                 hero.strip()
                                 hero.equip(wp)
                                 hero.equip(hd)
@@ -647,9 +668,11 @@ def calc_benchmark_group_on_items_set(
                                 hero.equip(nk)
                                 hero.equip(rg)
                                 hero.equip(sh)
+                                # Update status
+                                status = hero.get_status()
                                 # Check thresholds pass?
-                                if hero.chk_thresholds():
-                                    benchmark = hero.get_benchmark()
+                                if hero.chk_thresholds(status=status):
+                                    benchmark = hero.get_benchmark(status=status)
                                     # Check benchmark valid
                                     if benchmark == None:
                                         continue
@@ -669,16 +692,9 @@ def calc_benchmark_group_on_items_set(
                                                 rg['id'],
                                                 sh['id'],
                                             ]
-                                            hero_st = {
-                                                'AT': hero.get_status()['AT'],
-                                                'DF': hero.get_status()['DF'],
-                                                'HP': hero.get_status()['HP'],
-                                                'SP': hero.get_status()['SP'],
-                                                'CT': hero.get_status()['CT'],
-                                                'CD': hero.get_status()['CD'],
-                                                'HT': hero.get_status()['HT'],
-                                                'EV': hero.get_status()['EV'],
-                                            }
+                                            hero_st = {}
+                                            for bsl in BASIC_STATES_LIST:
+                                                hero_st[bsl] = status[bsl]
                                         # New is worse
                                         elif benchmark_best[i] > benchmark[i]:
                                             # Next please
@@ -687,8 +703,6 @@ def calc_benchmark_group_on_items_set(
                                         else:
                                             # Go to next parameter
                                             pass
-    if flg_debug:
-        print('actually calculated {num}'.format(num=cnt))
     return {
         'benchmark_best': benchmark_best,
         'set_best': set_best,

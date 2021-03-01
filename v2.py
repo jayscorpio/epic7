@@ -3,6 +3,14 @@ import multiprocessing as mp
 from configparser import ConfigParser
 import os
 # Constant
+PRINT_ITEMS_KINDS = {
+    'weapon': '武器',
+    'head': '头盔',
+    'armor': '盔甲',
+    'neck': '项链',
+    'ring': '戒指',
+    'shoe': '鞋子'
+}
 ITEMS_LIST = [
     ['weapon', 0],
     ['head', 1],
@@ -140,9 +148,10 @@ class Hero:
         if name != None:
             if name not in artifacts:
                 print('error artifact [{nm}] not found'.format(nm=name))
-                return
+                return ('404', name)
             self.ATa += artifacts[name]['ATa']
             self.HPa += artifacts[name]['HPa']
+        return (None, None)
     def chk_thresholds(self, thresholds, status=None):
         """To Check thresholds pass or not
         TBD: It would be better to be used externally from Hero class
@@ -354,6 +363,12 @@ class Hero:
             return vl
         elif criteria == 'DMG':
             vl = self.calc_criteria('DMGnFU', status)
+            if status['FU']:
+                return vl * 1.3
+            return vl
+        elif criteria == 'DMGH':
+            vl = self.calc_criteria('DMG', status)
+            vl *= self.calc_criteria('HP', status)
             if status['FU']:
                 return vl * 1.3
             return vl
@@ -800,6 +815,10 @@ def calc_item_score_on_criteria(item, criteria, result=None):
         # CT + CD + AT + FU = DMGnFU + FU
         result = calc_item_score_on_criteria(item, 'DMGnFU', result)
         result = calc_item_score_on_criteria(item, 'FU', result)
+    elif criteria == 'DMGH':
+        # CT + CD + AT + FU + HP = DMG + HP
+        result = calc_item_score_on_criteria(item, 'DMG', result)
+        result = calc_item_score_on_criteria(item, 'HP', result)
     elif criteria in ('DPSnFU', 'DPSSnFU'):
         # CT + CD + AT + SP = DMGnFU + SP
         result = calc_item_score_on_criteria(item, 'DMGnFU', result)
@@ -1157,13 +1176,18 @@ if __name__ == '__main__':
                 flg_found_same_results = False
                 hero_name = hero_plan['name']
                 if hero_name not in heroes:
+                    print('hero cannot be found. Check output file for details')
                     f = open(path_result, 'a', encoding="utf-8")
                     f.write('error hero [{nm}] not found\n'.format(nm=hero_name))
                     f.close()
                     continue
                 hero = heroes[hero_name]
                 # Load plan to the hero
-                hero.load_plan(hero_plan)
+                (ec, info) = hero.load_plan(hero_plan)
+                if ec != None:
+                    f = open(path_result, 'a', encoding="utf-8")
+                    f.write('error artifact [{nm}] not found\n'.format(nm=name))
+                    f.close()
                 # Get Thresholds
                 thresholds = hero_plan['thresholds']
                 # Priorize items
@@ -1268,12 +1292,12 @@ if __name__ == '__main__':
                                         break
                                 if item == None:
                                     print('error something is wrong')
-                                f.write(il[0])
+                                f.write(PRINT_ITEMS_KINDS[il[0]])
                                 f.write('\t第')
                                 f.write(str(item['id'] + 1))
                                 f.write('件\n')
                                 f.write('\t')
-                                f.write(' '.join([item['set'], 'Set']))
+                                f.write(' '.join(['套装', item['set']]))
                                 f.write('\n')
                                 for atr in item['attributes']:
                                     f.write('\t'.join(['', atr['type'], str(atr['value'])]))

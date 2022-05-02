@@ -28,3 +28,5 @@ Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
 在执行计算时，如果对应的结果文件已经存在，那么对于结果文件中已经计算完成的英雄，会直接采用该结果
 ## 方案的微调
 基于上述计算的可继续性，可以在已经计算的结果中删除某些英雄的内容，然后进行计算，实现部分英雄的更新
+# 引用
+本项目引用了 https://github.com/kmalone86/gamedatabase 的数据库

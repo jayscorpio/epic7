@@ -1,6 +1,6 @@
 # e7
 Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
-#快速上手
+# 快速上手
 - 克隆本仓库（注意submodule的正确克隆）
 - 更新数据
 - 更新配装方案

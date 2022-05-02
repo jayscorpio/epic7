@@ -16,7 +16,7 @@ Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
 但由于Database的数据可能存在更新延迟等问题，也可以选择在详细面板数据（B~I）列填写数据，如果发现根据Database计算的数据与手动输入的数据不符，会采用手动数据并给出提示  
 ### 装备
 在【weapon】、【head】、【armor】、【neck】、【ring】、【shoe】表中编辑装备的数据  
-A列为套装，对应HP（生命）、AT（攻击）、DF（防御）、SP（速度）、HT（命中）、EV（抵抗）、CT（暴击）、CD（破灭）、FU（愤怒）、BL（吸血）、IM（免疫）、FB（反击）、PC（穿透）、WD（伤口）
+A列为套装，对应HP（生命）、AT（攻击）、DF（防御）、SP（速度）、HT（命中）、EV（抵抗）、CT（暴击）、CD（破灭）、FU（愤怒）、TO（夹击）、BL（吸血）、IM（免疫）、FB（反击）、PC（穿透）、WD（伤口）
 B列为主属性类型，对应HPa（生命力）、HPp（生命力%）、ATa（攻击力）、ATp（攻击力%）、DFa（防御力）、DFp（防御力%）、SPa（速度）、HTa（效果命中）、EVa（效果抵抗）、CTa（暴击率）、CDa（暴击伤害）  
 C列为主属性数值  
 D至K列为副属性类型与副属性数据  

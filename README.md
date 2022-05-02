@@ -1,9 +1,12 @@
 # e7
 Epic7EquipmentEvaluateEmulatorExtraExtendedExtreme
-
+#快速上手
+- 克隆本仓库（注意submodule的正确克隆）
+- 更新数据
+- 更新配装方案
+- 运行v2.py
 #依赖
 - openpyxl
-
 # 更新数据
 ## 标准数据
 编辑Data/all.xslx文件，录入英雄、装备、神器

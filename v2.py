@@ -2,6 +2,10 @@ from openpyxl import load_workbook
 import multiprocessing as mp
 from configparser import ConfigParser
 import os
+from hero import Database, Hero
+import re
+# TBD
+# Save priorized item sets to a file for reuse
 # Constant
 PRINT_ITEMS_KINDS = {
     'weapon': '武器',
@@ -29,7 +33,8 @@ ITEM_SETS_LIST = [
     'HT',
     'EV',
     'FU',
-    'TO'
+    'TO',
+    'PC',
 ]
 BASIC_STATES_LIST = [
     'AT',
@@ -41,20 +46,20 @@ BASIC_STATES_LIST = [
     'HT',
     'EV'
 ]
-THRESHOLDS_LIST = [
-    'CTo',
-    'HTo',
-    'SPo',
-    'TANKo',
-    'EVo'
-]
+# THRESHOLDS_LIST = [
+#     'CTo',
+#     'HTo',
+#     'SPo',
+#     'TANKo',
+#     'EVo'
+# ]
 # Excel format
 PLAN_COL_THRESHOLD_STATE = {
-    4: 'CTo',
-    5: 'HTo',
-    6: 'SPo',
-    7: 'TANKo',
-    8: 'EVo'
+    4: 'CT',
+    5: 'HT',
+    6: 'SP',
+    7: 'TANK',
+    8: 'EV'
 }
 PLAN_COL_THRESHOLD_SET = {
     9: 'BL',
@@ -76,7 +81,12 @@ PLAN_COL_STATE = {
     36: 'HPp',
     37: 'EVa',
 }
-class Hero:
+PLAN_COL_EXTRA = {
+    13: 'IgnoreFU',
+    14: 'IgnorePC',
+    15: 'IgnoreCT',
+}
+class Sample:
     def __init__(self):
         """Init
         """
@@ -89,7 +99,7 @@ class Hero:
         Returns:
             Hero: the copy
         """
-        new_hero = Hero()
+        new_hero = Sample()
         new_hero.AT         = self.AT
         new_hero.DF         = self.DF
         new_hero.HP         = self.HP
@@ -124,6 +134,9 @@ class Hero:
         self.CD = dict_data['CD']
         self.HT = dict_data['HT']
         self.EV = dict_data['EV']
+        self.lv = dict_data['lv']
+        self.rank = dict_data['rank']
+        self.star = dict_data['star']
     def load_plan(self, dict_data):
         """Load plan
         Including:
@@ -132,25 +145,25 @@ class Hero:
         Args:
             dict_data (dict): Plan to be calculated
         """
-        self.ATp = dict_data['states']['ATp']
-        self.DFp = dict_data['states']['DFp']
-        self.HPp = dict_data['states']['HPp']
-        self.ATa = dict_data['states']['ATa']
-        self.DFa = dict_data['states']['DFa']
-        self.HPa = dict_data['states']['HPa']
-        self.SPa = dict_data['states']['SPa']
-        self.CTa = dict_data['states']['CTa']
-        self.CDa = dict_data['states']['CDa']
-        self.HTa = dict_data['states']['HTa']
-        self.EVa = dict_data['states']['EVa']
+        self.ATp = float(dict_data['states']['ATp'])
+        self.DFp = float(dict_data['states']['DFp'])
+        self.HPp = float(dict_data['states']['HPp'])
+        self.ATa = int(dict_data['states']['ATa'])
+        self.DFa = int(dict_data['states']['DFa'])
+        self.HPa = int(dict_data['states']['HPa'])
+        self.SPa = int(dict_data['states']['SPa'])
+        self.CTa = float(dict_data['states']['CTa'])
+        self.CDa = int(dict_data['states']['CDa'])
+        self.HTa = float(dict_data['states']['HTa'])
+        self.EVa = float(dict_data['states']['EVa'])
         # Artifact
         name = dict_data['artifact']
         if name != None:
             if name not in artifacts:
                 print('error artifact [{nm}] not found'.format(nm=name))
                 return ('404', name)
-            self.ATa += artifacts[name]['ATa']
-            self.HPa += artifacts[name]['HPa']
+            self.ATa += int(artifacts[name]['ATa'])
+            self.HPa += int(artifacts[name]['HPa'])
         return (None, None)
     def chk_thresholds(self, thresholds, status=None):
         """To Check thresholds pass or not
@@ -172,8 +185,11 @@ class Hero:
             elif criteria == 'SPo':
                 if status['SP'] < value:
                     return False
+            elif criteria == 'SPu':
+                if status['SP'] > value:
+                    return False
             elif criteria == 'TANKo':
-                if self.calc_criteria('TANK', status) < value:
+                if self.calc_criteria('TANK', extra, status) < value:
                     return False
             elif criteria == 'EVo':
                 if status['EV'] < value:
@@ -254,29 +270,29 @@ class Hero:
         vl_p = data['ATp']
         vl_a = data['ATa']
         if counter_sets['AT'] > 3:
-            vl_p += 35
+            vl_p += 45
         result['AT'] = vl * (100 + vl_p) / 100 + vl_a
         # DF
         vl = data['DF']
         vl_p = data['DFp']
         vl_a = data['DFa']
         if counter_sets['DF'] > 1:
-            vl_p += 15
+            vl_p += 20
             if counter_sets['DF'] > 3:
-                vl_p += 15
+                vl_p += 20
                 if counter_sets['DF'] > 5:
-                    vl_p += 15
+                    vl_p += 20
         result['DF'] = vl * (100 + vl_p) / 100 + vl_a
         # HP
         vl = data['HP']
         vl_p = data['HPp']
         vl_a = data['HPa']
         if counter_sets['HP'] > 1:
-            vl_p += 15
+            vl_p += 20
             if counter_sets['HP'] > 3:
-                vl_p += 15
+                vl_p += 20
                 if counter_sets['HP'] > 5:
-                    vl_p += 15
+                    vl_p += 20
         result['HP'] = vl * (100 + vl_p) / 100 + vl_a
         # SP
         vl = data['SP']
@@ -301,6 +317,8 @@ class Hero:
         vl = data['CD'] + data['CDa']
         if counter_sets['CD'] > 3:
             vl += 40
+        if vl > 350:
+            vl = 350
         result['CD'] = vl
         # HT
         vl = data['HT'] + data['HTa']
@@ -322,8 +340,10 @@ class Hero:
         result['EV'] = vl
         # FU
         result['FU'] = (counter_sets['FU'] > 3)
+        # PC
+        result['PC'] = (counter_sets['PC'] > 1)
         return result
-    def get_benchmark(self, formula, status=None):
+    def get_benchmark(self, formula, extra, status=None):
         """To calc benchmark
 
         Returns:
@@ -334,9 +354,9 @@ class Hero:
         if status == None:
             status = self.get_status()
         for crtr in formula:
-            benchmark.append(self.calc_criteria(crtr, status))
+            benchmark.append(self.calc_criteria(crtr, extra, status))
         return benchmark
-    def calc_criteria(self, criteria, status):
+    def calc_criteria(self, criteria, extra, status):
         """To calc on criteria
 
         Args:
@@ -350,56 +370,53 @@ class Hero:
             return status['SP']
         elif criteria == 'HP':
             return status['HP']
-        elif criteria == 'CMGnFU':
-            vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
+        elif criteria == 'HPS':
+            return status['SP'] * status['HP']
+        elif criteria == 'AT':
+            vl = status['AT']
+            if extra['IgnorePC'] == 0:
+                if status['PC']:
+                    vl *= 1.2
             return vl
+        elif criteria == 'CT':
+            return status['CT']
         elif criteria == 'CMG':
             vl = 100 - status['CT'] + status['CT'] * status['CD'] / 100
-            if status['FU']:
-                return vl * 1.3
+            if extra['IgnoreFU'] == 0:
+                if status['FU']:
+                    vl *= 1.3
             return vl
-        elif criteria == 'DMGnFU':
-            vl = status['AT'] * (100 - status['CT']) + status['AT'] * status['CT'] * status['CD'] / 100
+        elif criteria == 'CPS':
+            vl = self.calc_criteria('CMG', extra, status)
+            vl *= self.calc_criteria('SP', extra, status)
             return vl
         elif criteria == 'DMG':
-            vl = self.calc_criteria('DMGnFU', status)
-            if status['FU']:
-                return vl * 1.3
+            vl = self.calc_criteria('AT', extra, status)
+            if extra['IgnoreCT'] == 0:
+                vl *= self.calc_criteria('CMG', extra, status)
+            return vl
+        elif criteria == 'DPS':
+            vl = self.calc_criteria('DMG', extra, status)
+            vl *= self.calc_criteria('SP', extra, status)
             return vl
         elif criteria == 'DMGH':
-            vl = self.calc_criteria('DMG', status)
-            vl *= self.calc_criteria('HP', status)
-            if status['FU']:
-                return vl * 1.3
+            vl = self.calc_criteria('DMG', extra, status)
+            # vl *= self.calc_criteria('HP', extra, status)
             return vl
-        elif criteria == 'DPSnFU':
-            return self.calc_criteria('DMG', status) * status['SP']
-        elif criteria == 'DPS':
-            vl = self.calc_criteria('DPSnFU', status)
-            if status['FU']:
-                return vl * 1.3
-            return vl
-        elif criteria == 'DPSSnFU':
-            return self.calc_criteria('DPS', status) * status['SP']
         elif criteria == 'DPSS':
-            vl = self.calc_criteria('DPSSnFU', status)
-            if status['FU']:
-                return vl * 1.3
+            vl = self.calc_criteria('DPS', extra, status)
+            vl *= self.calc_criteria('SP', extra, status)
             return vl
         elif criteria == 'DPSD':
-            vl = self.calc_criteria('DPS', status) * status['DF']
-            if status['FU']:
-                return vl * 1.3
+            vl = self.calc_criteria('DPS', extra, status)
+            # vl *= self.calc_criteria('DF', extra, status)
             return vl
         elif criteria == 'DPSH':
-            vl = self.calc_criteria('DPS', status) * status['HP']
-            if status['FU']:
-                return vl * 1.3
+            vl = self.calc_criteria('DPS', extra, status)
+            # vl *= self.calc_criteria('HP', extra, status)
             return vl
         elif criteria == 'HT':
             return status['HT']
-        elif criteria == 'CT':
-            return status['CT']
         elif criteria == 'EV':
             return status['EV']
         elif criteria == 'TANK':
@@ -489,7 +506,7 @@ def load_sheet_hero(worksheet, holder):
         # Check valid line
         if rw[0].value is None:
             continue
-        hero = Hero()
+        hero = Sample()
         hero.load({
             'AT': rw[1].value,
             'DF': rw[2].value,
@@ -499,6 +516,9 @@ def load_sheet_hero(worksheet, holder):
             'CD': rw[6].value,
             'HT': rw[7].value,
             'EV': rw[8].value,
+            'lv': rw[9].value,
+            'rank': rw[10].value,
+            'star': rw[11].value,
         })
         holder[rw[0].value] = hero
 def load_sheet_plan(worksheet, holder):
@@ -529,10 +549,22 @@ def load_sheet_plan(worksheet, holder):
                 data['thresholds']['sets'].add(field)
         # - States
         for idx, field in PLAN_COL_THRESHOLD_STATE.items():
-            if rw[idx].value == None:
-                data['thresholds']['states'][field] = 0
-            else:
-                data['thresholds']['states'][field] = rw[idx].value
+            if rw[idx].value != None:
+                value = rw[idx].value
+                value_min = None
+                value_max = None
+                try:
+                    if ';' in value:
+                        value_min = float(value.split(';')[0])
+                        value_max = float(value.split(';')[1])
+                    else:
+                        value_min = float(value)
+                except TypeError:
+                    value_min = value
+                if value_min != None:
+                    data['thresholds']['states'][field+'o'] = value_min
+                if value_max != None:
+                    data['thresholds']['states'][field+'u'] = value_max
         # States
         data['states'] = {}
         for idx, field in PLAN_COL_STATE.items():
@@ -542,6 +574,13 @@ def load_sheet_plan(worksheet, holder):
                 data['states'][field] = rw[idx].value
         # Artifact
         data['artifact'] = rw[PLAN_COL_ARTIFACT].value
+        # Extra
+        data['extra'] = {}
+        for idx, field in PLAN_COL_EXTRA.items():
+            if rw[idx].value == None:
+                data['extra'][field] = 0
+            else:
+                data['extra'][field] = rw[idx].value
         holder.append(data)
 def calc_benchmark_group(items, hero, formula, thresholds, idx, total, queue, priority, flg_debug=False):
     """Calculate the best benchmark of a group data
@@ -682,7 +721,7 @@ def calc_benchmark_group_on_items_set(
                                 status = hero.get_status()
                                 # Check thresholds pass?
                                 if hero.chk_thresholds(thresholds['states'], status=status):
-                                    benchmark = hero.get_benchmark(formula, status=status)
+                                    benchmark = hero.get_benchmark(formula, extra, status=status)
                                     # Check benchmark valid
                                     if benchmark == None:
                                         continue
@@ -718,7 +757,7 @@ def calc_benchmark_group_on_items_set(
         'set_best': set_best,
         'hero_st': hero_st
     }
-def calc_item_score_on_formula(item, formula):
+def calc_item_score_on_formula(item, formula, extra):
     """Calculate score for the item according to the formula
     The result shall be a list containing powers from each criteria
 
@@ -733,9 +772,9 @@ def calc_item_score_on_formula(item, formula):
     # Loop all criteria
     for criteria in formula:
         # Add the power to result
-        result.append(calc_item_score_on_criteria(item, criteria))
+        result.append(calc_item_score_on_criteria(item, criteria, extra))
     return result
-def calc_item_score_on_criteria(item, criteria, result=None):
+def calc_item_score_on_criteria(item, criteria, extra, result=None):
     """Calculate score for the item according to the criteria
     The result shall be a list containing the min and max power pairs
     Each element in the list shall be a list with min and max power
@@ -799,42 +838,35 @@ def calc_item_score_on_criteria(item, criteria, result=None):
             result.append([0, 1])
         else:
             result.append([0, 0])
-    elif criteria == 'CMGnFU':
-        # CT + CD
-        result = calc_item_score_on_criteria(item, 'CT', result)
-        result = calc_item_score_on_criteria(item, 'CD', result)
     elif criteria == 'CMG':
-        # CT + CD + FU = CMGnFU + FU
-        result = calc_item_score_on_criteria(item, 'CMGnFU', result)
-        result = calc_item_score_on_criteria(item, 'FU', result)
-    elif criteria == 'DMGnFU':
-        # CT + CD + AT = CMGnFU + AT
-        result = calc_item_score_on_criteria(item, 'CMGnFU', result)
-        result = calc_item_score_on_criteria(item, 'AT', result)
+        # CT + CD
+        result = calc_item_score_on_criteria(item, 'CT', extra, result)
+        result = calc_item_score_on_criteria(item, 'CD', extra, result)
+    elif criteria == 'CPS':
+        # CT + CD + SP = CMG + SP
+        result = calc_item_score_on_criteria(item, 'DMG', extra, result)
+        result = calc_item_score_on_criteria(item, 'SP', extra, result)
     elif criteria == 'DMG':
-        # CT + CD + AT + FU = DMGnFU + FU
-        result = calc_item_score_on_criteria(item, 'DMGnFU', result)
-        result = calc_item_score_on_criteria(item, 'FU', result)
+        # AT + (CT)
+        result = calc_item_score_on_criteria(item, 'AT', extra, result)
+        if extra['IgnoreCT'] == 0:
+            result = calc_item_score_on_criteria(item, 'CMG', extra, result)
     elif criteria == 'DMGH':
-        # CT + CD + AT + FU + HP = DMG + HP
-        result = calc_item_score_on_criteria(item, 'DMG', result)
-        result = calc_item_score_on_criteria(item, 'HP', result)
-    elif criteria in ('DPSnFU', 'DPSSnFU'):
-        # CT + CD + AT + SP = DMGnFU + SP
-        result = calc_item_score_on_criteria(item, 'DMGnFU', result)
-        result = calc_item_score_on_criteria(item, 'SP', result)
+        # DMG + HP
+        result = calc_item_score_on_criteria(item, 'DMG', extra, result)
+        # result = calc_item_score_on_criteria(item, 'HP', extra, result)
     elif criteria in ('DPS', 'DPSS'):
-        # CT + CD + AT + SP + FU = DPSnFU + FU
-        result = calc_item_score_on_criteria(item, 'DPSnFU', result)
-        result = calc_item_score_on_criteria(item, 'FU', result)
+        # DMG + SP
+        result = calc_item_score_on_criteria(item, 'DMG', extra, result)
+        result = calc_item_score_on_criteria(item, 'SP', extra, result)
     elif criteria in ('DPSD', ):
-        # CT + CD + AT + SP + FU + DF = DPS + DF
-        result = calc_item_score_on_criteria(item, 'DPS', result)
-        result = calc_item_score_on_criteria(item, 'DF', result)
+        # DPS + DF
+        result = calc_item_score_on_criteria(item, 'DPS', extra, result)
+        # result = calc_item_score_on_criteria(item, 'DF', extra, result)
     elif criteria in ('DPSH', ):
-        # CT + CD + AT + SP + FU + HP = DPS + HP
-        result = calc_item_score_on_criteria(item, 'DPS', result)
-        result = calc_item_score_on_criteria(item, 'HP', result)
+        # DPS + HP
+        result = calc_item_score_on_criteria(item, 'DPS', extra, result)
+        # result = calc_item_score_on_criteria(item, 'HP', extra, result)
     elif criteria == 'HP':
         # HP
         value = 0
@@ -850,6 +882,10 @@ def calc_item_score_on_criteria(item, criteria, result=None):
             result.append([value, value + 15])
         else:
             result.append([value, value])
+    elif criteria == 'HPS':
+        # HP + SP
+        result = calc_item_score_on_criteria(item, 'HP', extra, result)
+        result = calc_item_score_on_criteria(item, 'SP', extra, result)
     elif criteria == 'DF':
         # DF
         value = 0
@@ -867,8 +903,8 @@ def calc_item_score_on_criteria(item, criteria, result=None):
             result.append([value, value])
     elif criteria == 'TANK':
         # HP, DF
-        result = calc_item_score_on_criteria(item, 'HP', result)
-        result = calc_item_score_on_criteria(item, 'DF', result)
+        result = calc_item_score_on_criteria(item, 'HP', extra, result)
+        result = calc_item_score_on_criteria(item, 'DF', extra, result)
     elif criteria == 'HT':
         value = 0
         for attribute in item['attributes']:
@@ -889,14 +925,20 @@ def calc_item_score_on_criteria(item, criteria, result=None):
             result.append([value, value + 20])
         else:
             result.append([value, value])
-    elif criteria == 'FU':
-        # FU
+    else:
+        print('unknown criteria {m}'.format(m=criteria))
+    # Ignore FU
+    if extra['IgnoreFU'] == 0:
         if item['set'] == 'FU':
             result.append([0, 1])
         else:
             result.append([0, 0])
-    else:
-        print('unknown criteria {m}'.format(m=criteria))
+    # Ignore PC
+    if extra['IgnorePC'] == 0:
+        if item['set'] == 'PC':
+            result.append([0, 1])
+        else:
+            result.append([0, 0])
     return result
 def compare_score(score_0, score_1):
     """Compare score
@@ -996,7 +1038,7 @@ def compare_min_max(pair_0, pair_1):
         # Max value worse
         else:
             return 'worse'
-def priorize_items_by_formula(items, formula, debug=False):
+def priorize_items_by_formula(items, formula, extra, debug=False):
     """Priorize items according to the formula.
     Each criteria is used to filter all the rest candidate items until all
     criteria is checked.
@@ -1018,7 +1060,7 @@ def priorize_items_by_formula(items, formula, debug=False):
     # Loop all items in candidates
     for item in items:
         # Calculate this item
-        score = calc_item_score_on_formula(item, formula)
+        score = calc_item_score_on_formula(item, formula, extra)
         if debug:
             print('-----------------------------------------')
             print('add item with score')
@@ -1105,12 +1147,62 @@ def priorize_items_by_formula(items, formula, debug=False):
                     print('{id}{score}'.format(id=rslt['item']['id'], score=rslt['score']))
                 idx += 1
     return result
-
+def get_data_prev(path):
+    data = {}
+    rp_find_num = re.compile('\d+')
+    try:
+        fh = open(path, 'r')
+    except:
+        return data
+    step = 'hero'
+    hero = ''
+    for line in fh:
+        if step == 'hero':
+            hero = line[:-1]
+            if hero.endswith('\t结果不唯一'):
+                hero = hero[:-6]
+            step = 'item'
+        elif line.startswith('武器\t'):
+            weapon_idx = rp_find_num.search(line).group(0)
+            weapon_idx = int(weapon_idx) - 1
+        elif line.startswith('头盔\t'):
+            head_idx = rp_find_num.search(line).group(0)
+            head_idx = int(head_idx) - 1
+        elif line.startswith('盔甲\t'):
+            armor_idx = rp_find_num.search(line).group(0)
+            armor_idx = int(armor_idx) - 1
+        elif line.startswith('项链\t'):
+            neck_idx = rp_find_num.search(line).group(0)
+            neck_idx = int(neck_idx) - 1
+        elif line.startswith('戒指\t'):
+            ring_idx = rp_find_num.search(line).group(0)
+            ring_idx = int(ring_idx) - 1
+        elif line.startswith('鞋子\t'):
+            shoe_idx = rp_find_num.search(line).group(0)
+            shoe_idx = int(shoe_idx) - 1
+        elif line.startswith('速度'):
+            step = 'hero'
+            # Store current data
+            data[hero] = {
+                'weapon': weapon_idx,
+                'head': head_idx,
+                'armor': armor_idx,
+                'neck': neck_idx,
+                'ring': ring_idx,
+                'shoe': shoe_idx,
+            }
+        else:
+            pass
+    # except:
+    #     return None
+    return data
 if __name__ == '__main__':
     # Debug flag for info
     flg_debug = False
     # Debug flag to force single thread
     flg_single_thread = False
+    # Prepare database
+    D = Database()
     # Get config
     cfg = ConfigParser()
     cfg.read('config.ini')
@@ -1124,7 +1216,7 @@ if __name__ == '__main__':
     artifacts = {}
     for pth in os.listdir(pth_data):
         if pth.endswith('.xlsx') and not pth.startswith('~$'):
-            workbook = load_workbook(os.path.join(pth_data, pth))
+            workbook = load_workbook(os.path.join(pth_data, pth), data_only=True)
             for il in ITEMS_LIST:
                 load_excel(il[0], workbook, items)
             load_excel('artifact', workbook, artifacts)
@@ -1132,20 +1224,88 @@ if __name__ == '__main__':
     heroes = {}
     for pth in os.listdir(pth_data):
         if pth.endswith('.xlsx') and not pth.startswith('~$'):
-            workbook = load_workbook(os.path.join(pth_data, pth))
+            workbook = load_workbook(os.path.join(pth_data, pth), data_only=True)
             load_excel('hero', workbook, heroes)
+    for name, data in heroes.items():
+        lv = data.lv
+        rank = data.rank
+        star = data.star
+        hero = D.make_by_name(name, lv, rank, star)
+        if hero == False:
+            print(name)
+            input()
+        states = hero.get_states()
+        if data.AT == None:
+            data.AT = states['at']
+            data.DF = states['df']
+            data.HP = states['hp']
+            data.SP = states['sp']
+            data.CT = 100 * states['ct']
+            data.CD = 100 * states['cd']
+            data.HT = 100 * states['ht']
+            data.EV = 100 * states['ev']
+            continue
+        if data.AT != states['at']:
+            print(name)
+            print('at')
+            print(data.AT)
+            print(states['at'])
+            data.AT = states['at']
+        if data.DF != states['df']:
+            print(name)
+            print('df')
+            print(data.DF)
+            print(states['df'])
+            data.DF = states['df']
+        if data.HP != states['hp']:
+            print(name)
+            print('hp')
+            print(data.HP)
+            print(states['hp'])
+            data.HP = states['hp']
+        if data.SP != states['sp']:
+            print(name)
+            print('sp')
+            print(data.SP)
+            print(states['sp'])
+            data.SP = states['sp']
+        if data.CT != 100 * states['ct']:
+            print(name)
+            print('ct')
+            print(data.CT)
+            print(states['ct'])
+            data.CT = 100 * states['ct']
+        if data.CD != 100 * states['cd']:
+            print(name)
+            print('cd')
+            print(data.CD)
+            print(states['cd'])
+            data.CD = 100 * states['cd']
+        # if data.TO != states['to']:
+        #     input('to')
+        if data.HT != 100 * states['ht']:
+            print(name)
+            print('ht')
+            print(data.HT)
+            print(states['ht'])
+            data.HT = 100 * states['ht']
+        if data.EV != 100 * states['ev']:
+            print(name)
+            print('ev')
+            print(data.EV)
+            print(states['ev'])
+            data.EV = 100 * states['ev']
     # Load plans
     plans = {}
     for pth in os.listdir(pth_plan):
         if pth.endswith('.xlsx') and not pth.startswith('~$'):
             # Get name of plan set
             name = pth[:-5]
-            
             if name in plans:
                 print('error duplicated plan set name')
                 continue
             plans[name] = {}
-            workbook = load_workbook(os.path.join(pth_plan, pth))
+            workbook = load_workbook(os.path.join(pth_plan, pth), data_only=True)
             load_excel('plan', workbook, plans[name])
     # Step 3: Results
     # Create folder for results
@@ -1153,28 +1313,53 @@ if __name__ == '__main__':
         os.mkdir('Results')
     except:
         pass
-    for plan_set_name, plan_set in plans.items():
+    for plan_set_name in sorted(plans):
+        print(plan_set_name)
+        plan_set = plans[plan_set_name]
         # Create folder for plan set
         try:
             os.mkdir(os.path.join('Results', plan_set_name))
         except:
             pass
-        for plan_name, plan in plan_set.items():
+        for plan_name in sorted(plan_set):
+            print(plan_name)
+            plan = plan_set[plan_name]
             path_result = os.path.join('Results', plan_set_name, plan_name + '.txt')
-            f = open(path_result, 'w', encoding="utf-8")
+            # Try to open existed file for continuous calculation
+            data_prev = get_data_prev(path_result)
+            if data_prev != None:
+                f = open(path_result, 'a', encoding="utf-8")
+            else:
+                f = open(path_result, 'w', encoding="utf-8")
             f.close()
             # Copy items
             items_copy = items.copy()
+            # Process previous data
+            for hero_name, hero_data in data_prev.items():
+                print(f'skip plan for [{hero_name}]')
+                # Remove this hero plan
+                for hero_plan in plan:
+                    if hero_plan['name'] == hero_name:
+                        plan.pop(plan.index(hero_plan))
+                # Mark items used previously
+                for item_type, item_idx in hero_data.items():
+                    for item_data in items_copy[item_type]:
+                        if item_data['id'] == item_idx:
+                            items_copy[item_type].pop(items_copy[item_type].index(item_data))
             # Calculate this plan
             for hero_plan in plan:
+                hero_name = hero_plan['name']
+                # Info
+                print(f"Let's make {hero_name} great again!")
                 # Get formula
                 formula = hero_plan['formula']
+                # Get extra
+                extra = hero_plan['extra']
                 # Check formula valid
                 if len(formula) == 0:
                     continue
                 # Init flags
                 flg_found_same_results = False
-                hero_name = hero_plan['name']
                 if hero_name not in heroes:
                     print('hero cannot be found. Check output file for details')
                     f = open(path_result, 'a', encoding="utf-8")
@@ -1195,7 +1380,7 @@ if __name__ == '__main__':
                 # Loop all 6 classes to be filtered
                 for itm_type, itms in items_copy.items():
                     items_priorized[itm_type] = priorize_items_by_formula(
-                        itms, formula
+                        itms, formula, extra
                     )
                 max_loop = max(
                     len(items_priorized['weapon']),
